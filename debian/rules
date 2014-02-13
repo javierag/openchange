@@ -44,6 +44,8 @@ override_dh_auto_build:
 override_dh_auto_clean:
 	[ ! -f config.mk ] || $(MAKE) distclean
 	rm -f config.log
+	rm -rf mapiproxy/services/web/rpcproxy/build
+	rm -rf mapiproxy/services/web/rpcproxy/dist
 	rm -rf mapiproxy/services/ocsmanager/ocsmanager.egg-info
 	rm -rf mapiproxy/services/ocsmanager/build
 	rm -rf mapiproxy/services/ocsmanager/dist
