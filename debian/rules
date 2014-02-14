@@ -49,6 +49,7 @@ override_dh_auto_clean:
 	rm -rf mapiproxy/services/ocsmanager/ocsmanager.egg-info
 	rm -rf mapiproxy/services/ocsmanager/build
 	rm -rf mapiproxy/services/ocsmanager/dist
+	find mapiproxy/services/ocsmanager -name "*.pyc" | xargs rm -f
 	rm -f python/openchange/mapi.so
 	rm -f configure config.h.in pyopenchange/mapistore/errors.c
 
