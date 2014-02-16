@@ -1,3 +1,9 @@
+openchange (1:2.0-2~20140216-1) saucy; urgency=low
+
+  * Merged Out of Office support from master
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Sun, 16 Feb 2014 18:50:35 +0100
+
 openchange (1:2.0-2~20140214-1) saucy; urgency=low
 
   * Merged mysql backend from master
