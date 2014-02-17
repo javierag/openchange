@@ -72,7 +72,6 @@ override_dh_auto_install:
 	# ocsmanager app
 	(cd mapiproxy/services/ocsmanager; python$* setup.py install --prefix=/usr --root $(DESTDIR) \
 		--single-version-externally-managed --install-layout=deb $(py_setup_install_args))
-	find $(PKGDIR) -name '*.pth' -delete
 	install -d $(DESTDIR)/etc/ocsmanager
 	install -m 0644 mapiproxy/services/ocsmanager/ocsmanager.ini $(DESTDIR)/etc/ocsmanager/
 	install -d $(DESTDIR)/etc/apache2/conf.d
@@ -85,8 +84,6 @@ override_dh_auto_install:
 		--install-scripts=/usr/lib/openchange/web/rpcproxy --install-layout=deb $(py_setup_install_args))
 	rm -f $(DESTDIR)/usr/lib/openchange/web/rpcproxy/rpcproxy/*pyc
 	install -d $(DESTDIR)/usr/lib/python2.7/dist-packages/
-	echo "/usr/lib/python2.7/dist-packages" > $(DESTDIR)/usr/lib/python2.7/dist-packages/mapistore.pth
-	echo "/usr/lib/python2.7/dist-packages" > $(DESTDIR)/usr/lib/python2.7/dist-packages/openchange.pth
 
 override_dh_install:
 	dh_install --sourcedir=debian/tmp --list-missing --fail-missing
