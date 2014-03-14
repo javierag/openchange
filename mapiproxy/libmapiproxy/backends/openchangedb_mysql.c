@@ -17,8 +17,6 @@
 
 #define THRESHOLD_SLOW_QUERIES 0.25
 
-#define TRANSPORT_FOLDER_NAME "Outbox"
-
 // We only used one connection
 // FIXME assumption that every user will use the same mysql server. Change
 // into list of connections indexed by username, like indexing backend.
@@ -440,24 +438,10 @@ static enum MAPISTATUS get_ReceiveFolder(TALLOC_CTX *mem_ctx,
 
 static enum MAPISTATUS get_TransportFolder(struct openchangedb_context *self,
 					   const char *recipient,
-					   uint64_t *FolderId)
+					   uint64_t *folder_id)
 {
-	TALLOC_CTX *mem_ctx = talloc_named(NULL, 0, "get_TransportFolder");
-	MYSQL *conn = self->data;
-	char *sql;
-	enum MAPISTATUS ret;
-
-	// FIXME ou_id
-	sql = talloc_asprintf(mem_ctx,
-		"SELECT f.folder_id FROM folders f "
-		"JOIN mailboxes m ON f.mailbox_id = m.id AND m.name = '%s' "
-		"JOIN folders_properties p ON p.folder_id = f.id"
-		" AND p.name = 'PidTagDisplayName' AND p.value = '%s'",
-		_sql(mem_ctx, recipient), TRANSPORT_FOLDER_NAME);
-
-	ret = status(select_first_uint(conn, sql, FolderId));
-	talloc_free(mem_ctx);
-	return ret;
+	return get_SystemFolderID(self, recipient, TRANSPORT_FOLDER_SYSTEM_IDX,
+				  folder_id);
 }
 
 static enum MAPISTATUS get_mailbox_ids_by_name(MYSQL *conn,
@@ -2490,7 +2474,7 @@ static enum MAPISTATUS get_id_from_folder_id(MYSQL *conn, const char *username,
 	return ret;
 }
 
-static enum MAPISTATUS message_create(TALLOC_CTX *mem_ctx,
+static enum MAPISTATUS message_create(TALLOC_CTX *parent_ctx,
 				      struct openchangedb_context *self,
 				      const char *username,
 				      uint64_t message_id, uint64_t fid,
@@ -2504,15 +2488,15 @@ static enum MAPISTATUS message_create(TALLOC_CTX *mem_ctx,
 
 	ret = get_mailbox_ids_by_name(conn, username, &mailbox_id,
 				      &mailbox_folder_id);
-	OPENCHANGE_RETVAL_IF(ret != MAPI_E_SUCCESS, ret, mem_ctx);
+	OPENCHANGE_RETVAL_IF(ret != MAPI_E_SUCCESS, ret, NULL);
 
 	parent_is_mailbox = mailbox_folder_id == fid;
 	if (!parent_is_mailbox) {
 		ret = get_id_from_folder_id(conn, username, fid, &folder_id);
-		OPENCHANGE_RETVAL_IF(ret != MAPI_E_SUCCESS, ret, mem_ctx);
+		OPENCHANGE_RETVAL_IF(ret != MAPI_E_SUCCESS, ret, NULL);
 	}
 
-	msg = talloc_zero(mem_ctx, struct openchangedb_message);
+	msg = talloc_zero(parent_ctx, struct openchangedb_message);
 	OPENCHANGE_RETVAL_IF(!msg, MAPI_E_NOT_ENOUGH_MEMORY, NULL);
 	msg->id = 0; // Only new records will have id equal to 0
 	// TODO ou_id
