@@ -1,3 +1,9 @@
+openchange (3:2.0-2~20140327-2) trusty; urgency=low
+
+  * trusty build
+
+ -- José A. Calvo <jacalvo@zentyal.com>  Fri, 28 Mar 2014 15:30:52 +0100
+
 openchange (3:2.0-2~20140327-1) saucy; urgency=low
 
   * saucy New upstream release
