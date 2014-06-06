@@ -207,17 +207,6 @@ Description: Storage library for MAPI objects - development files
  .
  This package contains the development files.
 
-Package: python-mapistore
-Section: python
-Architecture: any
-Depends: libmapistore0 (= ${binary:Version}),
-         ${python:Depends},
-         ${misc:Depends},
-         ${shlibs:Depends}
-Description: Python bindings for the mapistore library
- Those are the bindings for Python projects that want to make use of
- the python library.
-
 Package: python-ocsmanager
 Section: python
 Architecture: all
