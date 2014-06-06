@@ -1,3 +1,9 @@
+openchange (3:2.0-2~20140606-1) trusty; urgency=medium
+
+  * Merged master
+
+ -- Samuel Cabrero <scabrero@zentyal.com>  Fri, 06 Jun 2014 12:14:19 +0200
+
 openchange (3:2.0-2~20140327-2) trusty; urgency=low
 
   * trusty build
