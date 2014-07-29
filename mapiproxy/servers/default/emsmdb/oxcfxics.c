@@ -622,6 +622,7 @@ static void oxcfxics_push_messageChange_recipients(struct emsmdbp_context *emsmd
 static void oxcfxics_push_messageChange_attachment_embedded_message(struct emsmdbp_context *emsmdbp_ctx, uint32_t contextID, struct emsmdbp_object_synccontext *synccontext, struct oxcfxics_sync_data *sync_data, void *attachment)
 {
 	TALLOC_CTX			*mem_ctx;
+	enum MAPISTATUS			retval;
 	enum mapistore_error		ret;
         struct mapistore_message	*msg;
 	void				*embedded_message;
@@ -680,7 +681,10 @@ static void oxcfxics_push_messageChange_attachment_embedded_message(struct emsmd
 		ndr_push_uint32(sync_data->cutmarks_ndr, NDR_SCALARS, 0);
 		ndr_push_uint32(sync_data->cutmarks_ndr, NDR_SCALARS, sync_data->ndr->offset);
 
-		RAWIDSET_push_guid_glob(sync_data->eid_set, &sync_data->replica_guid, (messageID >> 16) & 0x0000ffffffffffff);
+		retval = RAWIDSET_push_guid_glob(sync_data->eid_set, &sync_data->replica_guid, (messageID >> 16) & 0x0000ffffffffffff);
+		if (retval != MAPI_E_SUCCESS) {
+			DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+		}
 	}
 
 	talloc_free(mem_ctx);
@@ -784,6 +788,7 @@ static void oxcfxics_table_set_cn_restriction(struct emsmdbp_context *emsmdbp_ct
 static bool oxcfxics_push_messageChange(struct emsmdbp_context *emsmdbp_ctx, struct emsmdbp_object_synccontext *synccontext, const char *owner, struct oxcfxics_sync_data *sync_data, struct emsmdbp_object *folder_object)
 {
 	TALLOC_CTX			*mem_ctx, *msg_ctx;
+	enum MAPISTATUS			retval;
 	bool				folder_is_mapistore, end_of_table;
 	struct emsmdbp_object		*table_object, *message_object;
 	uint32_t			i;
@@ -914,7 +919,11 @@ static bool oxcfxics_push_messageChange(struct emsmdbp_context *emsmdbp_ctx, str
 
 		/* source key */
 		emsmdbp_replid_to_guid(emsmdbp_ctx, owner, eid & 0xffff, &replica_guid);
-		RAWIDSET_push_guid_glob(sync_data->eid_set, &replica_guid, (eid >> 16) & 0x0000ffffffffffff);
+		retval = RAWIDSET_push_guid_glob(sync_data->eid_set, &replica_guid, (eid >> 16) & 0x0000ffffffffffff);
+		if (retval != MAPI_E_SUCCESS) {
+			DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+			/* FIXME: what should we do here? */
+		}
 
 		/* bin_data = oxcfxics_make_gid(header_data_pointers, &sync_data->replica_guid, eid >> 16); */
 		emsmdbp_source_key_from_fmid(header_data_pointers, emsmdbp_ctx, owner, eid, &bin_data);
@@ -950,7 +959,11 @@ static bool oxcfxics_push_messageChange(struct emsmdbp_context *emsmdbp_ctx, str
 			goto end_row;
 		}
 		/* The "cnset_seen" range is going to be merged later with the one from synccontext since the ids are not sorted */
-		RAWIDSET_push_guid_glob(sync_data->cnset_seen, &sync_data->replica_guid, cn);
+		retval = RAWIDSET_push_guid_glob(sync_data->cnset_seen, &sync_data->replica_guid, cn);
+		if (retval != MAPI_E_SUCCESS) {
+			DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+			/* FIXME: What should we do here? */
+		}
 
 		/* change key */
 		/* bin_data = oxcfxics_make_gid(header_data_pointers, &sync_data->replica_guid, cn); */
@@ -1070,10 +1083,18 @@ static bool oxcfxics_push_messageChange(struct emsmdbp_context *emsmdbp_ctx, str
 			}
 			if (!mapistore_folder_get_deleted_fmids(emsmdbp_ctx->mstore_ctx, contextID, folder_object->backend_object, mem_ctx, sync_data->table_type, cn, &deleted_eids, &cn)) {
 				for (i = 0; i < deleted_eids->cValues; i++) {
-					RAWIDSET_push_guid_glob(sync_data->deleted_eid_set, &sync_data->replica_guid, (deleted_eids->lpui8[i] >> 16) & 0x0000ffffffffffff);
+					retval = RAWIDSET_push_guid_glob(sync_data->deleted_eid_set, &sync_data->replica_guid, (deleted_eids->lpui8[i] >> 16) & 0x0000ffffffffffff);
+					if (retval != MAPI_E_SUCCESS) {
+						DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+						/* FIXME: What should we do here? */
+					}
 				}
 				if (deleted_eids->cValues > 0) {
-					RAWIDSET_push_guid_glob(sync_data->cnset_seen, &sync_data->replica_guid, (cn >> 16) & 0x0000ffffffffffff);
+					retval = RAWIDSET_push_guid_glob(sync_data->cnset_seen, &sync_data->replica_guid, (cn >> 16) & 0x0000ffffffffffff);
+					if (retval != MAPI_E_SUCCESS) {
+						DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+						/* FIXME: What should we do here? */
+					}
 				}
 			}
 			preload_mids.cValues = 0;
@@ -1269,6 +1290,7 @@ static void oxcfxics_fill_synccontext_with_messageChange(struct emsmdbp_object_s
 static void oxcfxics_push_folderChange(struct emsmdbp_context *emsmdbp_ctx, struct emsmdbp_object_synccontext *synccontext, const char *owner, struct emsmdbp_object *topmost_folder_object, struct oxcfxics_sync_data *sync_data, struct emsmdbp_object *folder_object)
 {
 	TALLOC_CTX		*mem_ctx;
+	enum MAPISTATUS		retval;
 	struct emsmdbp_object	*table_object, *subfolder_object;
 	uint64_t		eid, cn;
 	struct Binary_r		predecessors_data;
@@ -1335,7 +1357,11 @@ static void oxcfxics_push_folderChange(struct emsmdbp_context *emsmdbp_ctx, stru
 				continue;
 			}
 			emsmdbp_replid_to_guid(emsmdbp_ctx, owner, eid & 0xffff, &replica_guid);
-			RAWIDSET_push_guid_glob(sync_data->eid_set, &replica_guid, (eid >> 16) & 0x0000ffffffffffff);
+			retval = RAWIDSET_push_guid_glob(sync_data->eid_set, &replica_guid, (eid >> 16) & 0x0000ffffffffffff);
+			if (retval != MAPI_E_SUCCESS) {
+				DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+				/* FIXME: What should we do here? */
+			}
 
 			/* bin_data = oxcfxics_make_gid(header_data_pointers, &sync_data->replica_guid, eid >> 16); */
 			emsmdbp_source_key_from_fmid(header_data_pointers, emsmdbp_ctx, owner, eid, &bin_data);
@@ -1370,7 +1396,12 @@ static void oxcfxics_push_folderChange(struct emsmdbp_context *emsmdbp_ctx, stru
 				DEBUG(5, (__location__": folder changes: cn %.16"PRIx64" already present\n", cn));
 				goto end_row;
 			}
-			RAWIDSET_push_guid_glob(sync_data->cnset_seen, &sync_data->replica_guid, cn);
+
+			retval = RAWIDSET_push_guid_glob(sync_data->cnset_seen, &sync_data->replica_guid, cn);
+			if (retval != MAPI_E_SUCCESS) {
+				DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+				/* FIXME: What should we do here? */
+			}
 
 			/* change key */
 			if (retvals[sync_data->prop_index.change_key]) {
@@ -3212,6 +3243,7 @@ end:
 
 static void oxcfxics_fill_transfer_state_arrays(TALLOC_CTX *mem_ctx, struct emsmdbp_context *emsmdbp_ctx, struct emsmdbp_object_synccontext *synccontext, const char *owner, struct oxcfxics_sync_data *sync_data, struct emsmdbp_object *folder_object)
 {
+	enum MAPISTATUS			retval;
 	struct SPropTagArray		*count_query_props;
 	uint64_t			eid, cn;
 	uint32_t			i, nr_eid;
@@ -3274,7 +3306,11 @@ static void oxcfxics_fill_transfer_state_arrays(TALLOC_CTX *mem_ctx, struct emsm
 		if (data_pointers) {
 			eid = *(uint64_t *) data_pointers[0];
 			emsmdbp_replid_to_guid(emsmdbp_ctx, owner, eid & 0xffff, &replica_guid);
-			RAWIDSET_push_guid_glob(sync_data->eid_set, &replica_guid, (eid >> 16) & 0x0000ffffffffffff);
+			retval = RAWIDSET_push_guid_glob(sync_data->eid_set, &replica_guid, (eid >> 16) & 0x0000ffffffffffff);
+			if (retval != MAPI_E_SUCCESS) {
+				DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+				/* FIXME: What should we do here? */
+			}
 			
 			if (retvals[1]) {
 				unix_time = oc_version_time;
@@ -3294,7 +3330,11 @@ static void oxcfxics_fill_transfer_state_arrays(TALLOC_CTX *mem_ctx, struct emsm
 				abort();
 			}
 			cn = ((*(uint64_t *) data_pointers[sync_data->prop_index.change_number]) >> 16) & 0x0000ffffffffffff;
-			RAWIDSET_push_guid_glob(sync_data->cnset_seen, &sync_data->replica_guid, cn);
+			retval = RAWIDSET_push_guid_glob(sync_data->cnset_seen, &sync_data->replica_guid, cn);
+			if (retval != MAPI_E_SUCCESS) {
+				DEBUG(0, ("[ERR][%s]: Error while pushing glob GUID: %s\n", __location__, mapi_get_errstr(retval)));
+				/* FIXME: What should we do here? */
+			}
 			
 			talloc_free(retvals);
 			talloc_free(data_pointers);

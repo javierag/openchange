@@ -1167,29 +1167,23 @@ _PUBLIC_ void RAWIDSET_push_eid(struct rawidset *rawidset, uint64_t eid)
 	glob_idset->count++;
 }
 
-_PUBLIC_ void RAWIDSET_push_guid_glob(struct rawidset *rawidset, const struct GUID *guid, uint64_t globcnt)
+_PUBLIC_ enum MAPISTATUS RAWIDSET_push_guid_glob(struct rawidset *rawidset, const struct GUID *guid, uint64_t globcnt)
 {
-	struct rawidset *glob_idset, *last_glob_idset;
-	static struct GUID *zero_guid = NULL;
+	struct rawidset		*glob_idset = NULL;
+	struct rawidset		*last_glob_idset = NULL;
+	static struct GUID	*zero_guid = NULL;
 
-	if (!rawidset) return;
-
-	/* DEBUG(0, ("pushing %.16"PRIx64" into idset...\n", globcnt)); */
-
-	if (globcnt == 0) {
-		DEBUG(0, ("attempting to push a null globcnt\n"));
-		abort();
-	}
-
-	if ((globcnt & 0xffff000000000000)) {
-		DEBUG(0, ("attempting to push a globcnt that has not been shifted by 16 bits beforehand\n"));
-		abort();
-	}
+	/* Sanity checks */
+	OPENCHANGE_RETVAL_IF(!rawidset, MAPI_E_INVALID_PARAMETER, NULL);
+	OPENCHANGE_RETVAL_IF(!guid, MAPI_E_INVALID_PARAMETER, NULL);
+	OPENCHANGE_RETVAL_IF(!globcnt, MAPI_E_INVALID_PARAMETER, NULL);
+	OPENCHANGE_RETVAL_IF((globcnt & 0xffff000000000000), MAPI_E_INVALID_PARAMETER, NULL);
 
 	glob_idset = RAWIDSET_find_by_GUID(rawidset, guid, &last_glob_idset);
 	if (!glob_idset) {
 		if (!zero_guid) {
 			zero_guid = talloc_zero(NULL, struct GUID);
+			OPENCHANGE_RETVAL_IF(!zero_guid, MAPI_E_NOT_ENOUGH_MEMORY, NULL);
 		}
 
 		glob_idset = RAWIDSET_find_by_GUID(rawidset, zero_guid, NULL);
@@ -1206,6 +1200,8 @@ _PUBLIC_ void RAWIDSET_push_guid_glob(struct rawidset *rawidset, const struct GU
 	}
 	glob_idset->globcnts[glob_idset->count] = globcnt;
 	glob_idset->count++;
+
+	return MAPI_E_SUCCESS;
 }
 
 _PUBLIC_ struct idset *RAWIDSET_convert_to_idset(TALLOC_CTX *mem_ctx, const struct rawidset *rawidset)

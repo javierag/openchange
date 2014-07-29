@@ -541,7 +541,7 @@ uint64_t		exchange_globcnt(uint64_t);
 
 struct rawidset *	RAWIDSET_make(TALLOC_CTX *, bool, bool);
 void			RAWIDSET_push_eid(struct rawidset *, uint64_t);
-void			RAWIDSET_push_guid_glob(struct rawidset *, const struct GUID *, uint64_t);
+enum MAPISTATUS		RAWIDSET_push_guid_glob(struct rawidset *, const struct GUID *, uint64_t);
 struct idset *		RAWIDSET_convert_to_idset(TALLOC_CTX *, const struct rawidset *);
 
 struct idset *		IDSET_parse(TALLOC_CTX *, DATA_BLOB, bool);
