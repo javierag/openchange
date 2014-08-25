@@ -31,6 +31,12 @@
 #include "dcesrv_exchange_nsp.h"
 #include "ldb.h"
 
+/* Expose samdb_connect prototype */
+struct ldb_context *samdb_connect(TALLOC_CTX *, struct tevent_context *,
+				  struct loadparm_context *,
+				  struct auth_session_info *,
+				  unsigned int);
+
 /**
    \details Initialize the EMSABP context and open connections to
    Samba databases.
@@ -46,7 +52,7 @@ _PUBLIC_ struct emsabp_context *emsabp_init(struct loadparm_context *lp_ctx,
 	TALLOC_CTX		*mem_ctx;
 	struct emsabp_context	*emsabp_ctx;
 	struct tevent_context	*ev;
-	char			*samdb_url;
+	const char		*samdb_url;
 
 	/* Sanity checks */
 	if (!lp_ctx) return NULL;
@@ -74,12 +80,14 @@ _PUBLIC_ struct emsabp_context *emsabp_init(struct loadparm_context *lp_ctx,
 
 	/* Retrieve samdb url (local or external) */
 	samdb_url = lpcfg_parm_string(lp_ctx, NULL, "dcerpc_mapiproxy", "samdb_url");
-	if (!samdb_url) {
-		samdb_url = "sam.ldb";
-	}
 
 	/* return an opaque context pointer on samDB database */
-	emsabp_ctx->samdb_ctx = samdb_connect_url(mem_ctx, ev, lp_ctx, system_session(lp_ctx), 0, samdb_url);
+	if (!samdb_url) {
+		emsabp_ctx->samdb_ctx = samdb_connect(mem_ctx, ev, lp_ctx, system_session(lp_ctx), 0);
+	} else {
+		emsabp_ctx->samdb_ctx = samdb_connect_url(mem_ctx, ev, lp_ctx, system_session(lp_ctx), 0, samdb_url);
+	}
+
 	if (!emsabp_ctx->samdb_ctx) {
 		talloc_free(mem_ctx);
 		DEBUG(0, ("[%s:%d]: Connection to \"sam.ldb\" failed\n", __FUNCTION__, __LINE__));

@@ -2,6 +2,8 @@
 /*
    OpenChange PHP bindings examples
 
+   Configuration file for examples. Modify it to match your system.
+
    Copyright (C) 2013-2014 Javier Amor Garcia
 
    This program is free software; you can redistribute it and/or modify
@@ -18,40 +20,24 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-function __testOk($msg) {
-	    echo "OK: " . $msg . "\n";
-}
+$dbPath = "/home/jag/.openchange/profiles.ldb";
+$profileName = 'u2';
+$username='u2';
+$password = 'a';
+$domain = 'zentyal-domain';
+$realm = 'zentyal-domain.lan';
+$server =  '192.168.56.51';
 
-function __testFailed($msg) {
-	   echo("Failed: " . $msg . "\n");
-	   exit(1);
-}
+$appointmentId = "0x2500000000000001";
+$eventId = "0x3A08010000000001";
+$draftFolderId =  "0x1a00000000000001";
+$inexistentFolderId = '0xFFFF0d0000000001';
+$contactMessageId = '0x7500000000000001';
+$roContactId = $contactMessageId;
+$inexistentContactId = '0xA4010E0000ABCDEF';
+$messageId = '0x7500000000000001';
+$inexistentMesageId = '0x7500000CAAA00001';
+$taskId = "0x3500000000000001";
 
-function ok($expr, $msg) {
-	 if ($expr) {
-	    __testOk($msg);
-         } else {
-	   __testFailed($msg);
-         }
-}
-
-function is($a, $b, $msg) {
-	 if (! $msg) {
-	    $msg = "$a == $b";
-	 }
-	 if ($a == $b) {
-	    __testOk($msg);
-	 } else {
-	   __testFailed("$msg (expected $b but get $a)");
-	 }
-}
-
-function diag($msg) {
-	 echo "# $msg\n";
-}
-
-function endTestSuite($msg) {
-    diag("END test suite: $msg");
-}
-
+$mailboxName = 'OpenChange Mailbox: u2';
 ?>
