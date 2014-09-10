@@ -24,7 +24,7 @@ override_dh_autoreconf:
 override_dh_auto_configure:
 	test -f configure || ./autogen.sh
 	chmod a+x ./configure
-	LDFLAGS=-Wl,--as-needed ./configure \
+	CFLAGS='-g -O0' LDFLAGS=-Wl,--as-needed ./configure \
 		--prefix=/usr \
 		--mandir=/usr/share/man \
 		--with-modulesdir=/usr/lib/$(DEB_HOST_MULTIARCH)/openchange \
