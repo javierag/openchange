@@ -1,2 +1,2 @@
 #!/bin/sh
-sudo openchange_provision --migrate
+sudo openchange_provision --migrate > /dev/null 2>&1
