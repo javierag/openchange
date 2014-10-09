@@ -1,3 +1,24 @@
+# environment.py
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2011-2014  Julien Kerihuel <jkerihuel@openchange.org>
+#                          Jean Raby <jraby@inverse.ca>
+#                          Jesús García Saez <jgarcia@zentyal.com>
+#                          Enrique J. Hernández <ejhernandez@zentyal.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 """Pylons environment configuration"""
 import os
 
@@ -8,14 +29,17 @@ from pylons.error import handle_mako_error
 import ocsmanager.lib.app_globals as app_globals
 import ocsmanager.lib.helpers
 import ocsmanager.lib.config as OCSConfig
+import openchange.mapistore as mapistore
 from ocsmanager.config.routing import make_map
 from ocsmanager.lib.openchangedb import get_openchangedb
-import openchange.mapistore as mapistore
+from ocsmanager.lib.samdb import SamDBWrapper
+
 
 # samba
 import samba.param
-from samba.samdb import SamDB
 from samba.auth import system_session, admin_session
+from samba.credentials import Credentials
+
 
 FIRST_ORGANIZATION = "First Organization"
 FIRST_ORGANIZATION_UNIT = "First Administrative Group"
@@ -32,7 +56,18 @@ def _load_samba_environment():
     dnsdomain = params.get("realm")
     dnsdomain = dnsdomain.lower()
 
-    samdb_ldb = SamDB(url=params.samdb_url(), lp=params)
+    creds = Credentials()
+    creds.guess(params)
+    creds.set_machine_account(params)
+
+    samdb_url = params.get('dcerpc_mapiproxy:samdb_url')
+    if samdb_url is None:
+        samdb_url = params.samdb_url()
+
+    samdb_ldb = SamDBWrapper(url=samdb_url,
+                             session_info=system_session(),
+                             credentials=creds,
+                             lp=params)
     domaindn = samdb_ldb.domain_dn()
 
     rootdn = domaindn
@@ -41,6 +76,10 @@ def _load_samba_environment():
     # openchange.provision.guess_names_from_smbconf does.
     firstorg = FIRST_ORGANIZATION
     firstou = FIRST_ORGANIZATION_UNIT
+
+    username_mail = False
+    if params.get("auth:usernames are emails") == 'yes':
+        username_mail = True
 
     sam_environ = {"samdb_ldb": samdb_ldb,
                    "private_dir": params.get("private dir"),
@@ -53,7 +92,9 @@ def _load_samba_environment():
                                       "/cn=%s"
                                       % (firstorg, firstou, netbiosname)),
                    "hostname": hostname,
-                   "dnsdomain": dnsdomain}
+                   "dnsdomain": dnsdomain,
+                   'username_mail': username_mail,
+    }
 
     # OpenChange dispatcher DB names
 
@@ -103,6 +144,6 @@ def load_environment(global_conf, app_conf):
     config['mapistore'] = mstore
     config['management'] = mstore.management()
     if config['ocsmanager']['main']['debug'] == "yes":
-        config['management'].verbose = True;
+        config['management'].verbose = True
 
     return config

@@ -3,7 +3,7 @@
 
    OpenChange Project
 
-   Copyright (C) Julien Kerihuel 2009-2011
+   Copyright (C) Julien Kerihuel 2009-2014
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -842,7 +842,12 @@ static struct mapi_response *EcDoRpc_process_transaction(TALLOC_CTX *mem_ctx,
 							   &(mapi_response->mapi_repl[idx]),
 							   mapi_response->handles, &size);
 			break;
-		/* op_MAPI_GetMessageStatus: 0x1f */
+		case op_MAPI_GetMessageStatus: /* 0x1f */
+			retval = EcDoRpc_RopGetMessageStatus(mem_ctx, emsmdbp_ctx,
+							     &(mapi_request->mapi_req[i]),
+							     &(mapi_response->mapi_repl[idx]),
+							     mapi_response->handles, &size);
+			break;
 		/* op_MAPI_SetMessageStatus: 0x20 */
 		case op_MAPI_GetAttachmentTable: /* 0x21 */
 			retval = EcDoRpc_RopGetAttachmentTable(mem_ctx, emsmdbp_ctx,
@@ -1569,6 +1574,7 @@ static enum MAPISTATUS dcesrv_EcDoConnectEx(struct dcesrv_call_state *dce_call,
 	const char			*mailNickname;
 	const char			*userDN;
 	char				*dnprefix;
+	char				*tmp = "";
 
 	DEBUG(3, ("exchange_emsmdb: EcDoConnectEx (0xA)\n"));
 
@@ -1576,15 +1582,20 @@ static enum MAPISTATUS dcesrv_EcDoConnectEx(struct dcesrv_call_state *dce_call,
 	if (!dcesrv_call_authenticated(dce_call)) {
 		DEBUG(1, ("No challenge requested by client, cannot authenticate\n"));
 	failure:
-		wire_handle.handle_type = EXCHANGE_HANDLE_EMSMDB;
+		wire_handle.handle_type = 0;
 		wire_handle.uuid = GUID_zero();
 		*r->out.handle = wire_handle;
 		*r->out.pcmsPollsMax = 0;
 		*r->out.pcRetry = 0;
 		*r->out.pcmsRetryDelay = 0;
 		*r->out.picxr = 0;
-		r->out.szDNPrefix = NULL;
-		r->out.szDisplayName = NULL;
+
+		r->out.szDNPrefix = (const char **)talloc_array(mem_ctx, char *, 2);
+		r->out.szDNPrefix[0] = talloc_strdup(mem_ctx, tmp);
+
+		r->out.szDisplayName = (const char **)talloc_array(mem_ctx, char *, 2);
+		r->out.szDisplayName[0] = talloc_strdup(mem_ctx, tmp);
+
 		r->out.rgwServerVersion[0] = 0;
 		r->out.rgwServerVersion[1] = 0;
 		r->out.rgwServerVersion[2] = 0;
@@ -1594,8 +1605,19 @@ static enum MAPISTATUS dcesrv_EcDoConnectEx(struct dcesrv_call_state *dce_call,
 		*r->out.pulTimeStamp = 0;
 		r->out.rgbAuxOut = NULL;
 		*r->out.pcbAuxOut = 0;
-		r->out.result = MAPI_E_LOGON_FAILED;
-		return MAPI_E_LOGON_FAILED;
+		return r->out.result;
+	}
+
+	if (r->in.cbAuxIn < 0x8) {
+	  DEBUG(5, ("[ERR][%s:%d]: r->in.cbAuxIn is > 0x0 and < 0x8\n", __FILE__, __LINE__));
+		r->out.result = ecRpcFailed;
+		goto failure;
+	}
+
+	if (!r->in.szUserDN || strlen(r->in.szUserDN) == 0) {
+	  DEBUG(5, ("[ERR][%s:%d]: r->in.szUserDN is NULL or empty\n", __FILE__, __LINE__));
+		r->out.result = MAPI_E_NO_ACCESS;
+		goto failure;
 	}
 
 	/* Step 1. Initialize the emsmdbp context */
@@ -1604,18 +1626,21 @@ static enum MAPISTATUS dcesrv_EcDoConnectEx(struct dcesrv_call_state *dce_call,
 				   openchange_db_ctx);
 	if (!emsmdbp_ctx) {
 		DEBUG(0, ("FATAL: unable to initialize emsmdbp context"));
+		r->out.result = MAPI_E_LOGON_FAILED;
 		goto failure;
 	}
 
 	/* Step 2. Check if incoming user belongs to the Exchange organization */
 	if (emsmdbp_verify_user(dce_call, emsmdbp_ctx) == false) {
 		talloc_free(emsmdbp_ctx);
+		r->out.result = ecUnknownUser;
 		goto failure;
 	}
 
 	/* Step 3. Check if input user DN belongs to the Exchange organization */
 	if (emsmdbp_verify_userdn(dce_call, emsmdbp_ctx, r->in.szUserDN, &msg) == false) {
 		talloc_free(emsmdbp_ctx);
+		r->out.result = ecUnknownUser;
 		goto failure;
 	}
 
@@ -1632,12 +1657,15 @@ static enum MAPISTATUS dcesrv_EcDoConnectEx(struct dcesrv_call_state *dce_call,
 	dnprefix = strstr(userDN, mailNickname);
 	if (!dnprefix) {
 		talloc_free(emsmdbp_ctx);
+		r->out.result = MAPI_E_LOGON_FAILED;
 		goto failure;
 	}
 
 	*dnprefix = '\0';
 	emsmdbp_ctx->szDNPrefix = talloc_strdup(emsmdbp_ctx, userDN);
+	OPENCHANGE_RETVAL_IF(emsmdbp_ctx->szDNPrefix == NULL, MAPI_E_NOT_ENOUGH_RESOURCES, emsmdbp_ctx);
 	*r->out.szDNPrefix = strupper_talloc(mem_ctx, userDN);
+	OPENCHANGE_RETVAL_IF(*r->out.szDNPrefix == NULL, MAPI_E_NOT_ENOUGH_RESOURCES, emsmdbp_ctx);
 
 	/* Step 6. Fill EcDoConnectEx reply */
 	handle = dcesrv_handle_new(dce_call->context, EXCHANGE_HANDLE_EMSMDB);
@@ -1668,7 +1696,9 @@ static enum MAPISTATUS dcesrv_EcDoConnectEx(struct dcesrv_call_state *dce_call,
 		r->out.rgwBestVersion[0] = 0x000B;
 		r->out.rgwBestVersion[1] = 0x8000;
 		r->out.rgwBestVersion[2] = 0x0000;
-		
+		wire_handle.handle_type = 0;
+		wire_handle.uuid = GUID_zero();
+		*r->out.handle = wire_handle;
 		r->out.result = MAPI_E_VERSION;
 	} else {
 		r->out.rgwBestVersion[0] = r->in.rgwClientVersion[0];

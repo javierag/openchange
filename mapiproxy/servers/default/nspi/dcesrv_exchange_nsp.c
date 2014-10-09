@@ -250,9 +250,11 @@ static void dcesrv_NspiUnbind(struct dcesrv_call_state *dce_call,
 		}
 	}
 
+	r->out.handle->uuid = GUID_zero();
+	r->out.handle->handle_type = 0;
 	r->out.result = (enum MAPISTATUS) 1;
 
-	DCESRV_NSP_RETURN(r, MAPI_E_SUCCESS, NULL);
+	DCESRV_NSP_RETURN(r, 1, NULL);
 }
 
 
@@ -268,6 +270,7 @@ static void dcesrv_NspiUnbind(struct dcesrv_call_state *dce_call,
 static void dcesrv_NspiUpdateStat(struct dcesrv_call_state *dce_call, TALLOC_CTX *mem_ctx, struct NspiUpdateStat *r)
 {
 	enum MAPISTATUS			retval = MAPI_E_SUCCESS;
+        enum MAPISTATUS                 ret;
 	struct emsabp_context		*emsabp_ctx = NULL;
 	uint32_t			row, row_max;
 	TALLOC_CTX			*local_mem_ctx;
@@ -295,8 +298,17 @@ static void dcesrv_NspiUpdateStat(struct dcesrv_call_state *dce_call, TALLOC_CTX
 	}
 
 	mids = talloc_zero(local_mem_ctx, struct PropertyTagArray_r);
-	if (emsabp_search(local_mem_ctx, emsabp_ctx, mids, NULL, r->in.pStat, 0) != MAPI_E_SUCCESS) {
+        if (!mids) {
+                DCESRV_NSP_RETURN(r, MAPI_E_NOT_ENOUGH_MEMORY, NULL);
+        }
+
+        ret = emsabp_search(local_mem_ctx, emsabp_ctx, mids, NULL, r->in.pStat, 0);
+	if (ret != MAPI_E_SUCCESS) {
 		row_max = 0;
+                if (ret == MAPI_E_CALL_FAILED) {
+                        retval = ret;
+                        goto end;
+                }
 	}
 	else {
 		row_max = mids->cValues;
@@ -374,7 +386,8 @@ static void dcesrv_NspiQueryRows(struct dcesrv_call_state *dce_call,
 	struct emsabp_context		*emsabp_ctx = NULL;
 	struct SPropTagArray		*pPropTags;
 	struct PropertyRowSet_r		*pRows;
-	uint32_t			i, j, count;
+	uint32_t			count = 0;
+	uint32_t			i, j;
 
 	DEBUG(3, ("exchange_nsp: NspiQueryRows (0x3)\n"));
 
@@ -418,11 +431,16 @@ static void dcesrv_NspiQueryRows(struct dcesrv_call_state *dce_call,
 		
 		retval = emsabp_ab_container_enum(mem_ctx, emsabp_ctx,
 						  r->in.pStat->ContainerID, &ldb_res);
-		if (!MAPI_STATUS_IS_OK(retval))  {
+		if (retval != MAPI_E_SUCCESS)  {
 			goto failure;
 		}
 	
-		count = ldb_res->count - r->in.pStat->NumPos;
+		if ((ldb_res->count - r->in.pStat->NumPos) < 0) {
+			count = 0;
+		} else {
+			count = ldb_res->count - r->in.pStat->NumPos;
+		}
+
 		if (r->in.Count < count) {
 			count = r->in.Count;
 		}
@@ -435,7 +453,7 @@ static void dcesrv_NspiQueryRows(struct dcesrv_call_state *dce_call,
 		for (i = 0; i < count; i++) {
 			retval = emsabp_fetch_attrs_from_msg(mem_ctx, emsabp_ctx, pRows->aRow + i,
 							     ldb_res->msgs[i+r->in.pStat->NumPos], 0, r->in.dwFlags, pPropTags);
-			if (!MAPI_STATUS_IS_OK(retval)) {
+			if (retval != MAPI_E_SUCCESS) {
 				goto failure;
 			}
 		}
@@ -909,21 +927,12 @@ static void dcesrv_NspiGetSpecialTable(struct dcesrv_call_state *dce_call,
 		DCESRV_NSP_RETURN(r, MAPI_E_NOT_ENOUGH_RESOURCES, NULL);
 	}
 
-	switch (r->in.dwFlags) {
-	case NspiAddressCreationTemplates:
-	case NspiAddressCreationTemplates|NspiUnicodeStrings:
+	if (r->in.dwFlags & NspiAddressCreationTemplates) {
 		DEBUG(5, ("CreationTemplates Table requested\n"));
 		r->out.result = emsabp_get_CreationTemplatesTable(mem_ctx, emsabp_ctx, r->in.dwFlags, r->out.ppRows);
-		break;
-	case NspiUnicodeStrings:
-	case 0x0:
+	} else {
 		DEBUG(5, ("Hierarchy Table requested\n"));
 		r->out.result = emsabp_get_HierarchyTable(mem_ctx, emsabp_ctx, r->in.dwFlags, r->out.ppRows);
-		break;
-	default:
-		talloc_free(r->out.ppRows);
-		talloc_free(r->out.ppRows[0]);
-		DCESRV_NSP_RETURN(r, MAPI_E_NO_SUPPORT, NULL);
 	}
 }
 
@@ -1058,11 +1067,10 @@ static void dcesrv_NspiResolveNames(struct dcesrv_call_state *dce_call,
 {
 	enum MAPISTATUS			retval = MAPI_E_SUCCESS;
 	struct emsabp_context		*emsabp_ctx = NULL;
-	struct ldb_message		*ldb_msg_ab;
 	struct SPropTagArray		*pPropTags;
-	const char			*purportedSearch;
+	char				*filter_search = NULL;
 	struct PropertyTagArray_r	*pMIds = NULL;
-	struct PropertyRowSet_r			*pRows = NULL;
+	struct PropertyRowSet_r		*pRows = NULL;
 	struct StringsArray_r		*paStr;
 	uint32_t			i;
 	int				ret;
@@ -1075,21 +1083,19 @@ static void dcesrv_NspiResolveNames(struct dcesrv_call_state *dce_call,
 
 	if (!dcesrv_call_authenticated(dce_call)) {
 		DEBUG(1, ("No challenge requested by client, cannot authenticate\n"));
+		DCESRV_NSP_RETURN(r, MAPI_E_LOGON_FAILED, NULL);
 	}
 
 	emsabp_ctx = dcesrv_find_emsabp_context(&r->in.handle->uuid);
 	if (!emsabp_ctx) {
+		DEBUG(5, ("[nspi][%s:%d] emsabp_context not found\n", __FUNCTION__, __LINE__));
 		DCESRV_NSP_RETURN(r, MAPI_E_CALL_FAILED, NULL);
 	}
 
 	/* Step 1. Prepare in/out data */
-	retval = emsabp_ab_container_by_id(mem_ctx, emsabp_ctx, r->in.pStat->ContainerID, &ldb_msg_ab);
-	if (!MAPI_STATUS_IS_OK(retval)) {
-		DCESRV_NSP_RETURN(r, MAPI_E_INVALID_BOOKMARK, NULL);
-	}
-
-	purportedSearch = ldb_msg_find_attr_as_string(ldb_msg_ab, "purportedSearch", NULL);
-	if (!purportedSearch) {
+	retval = emsabp_ab_fetch_filter(mem_ctx, emsabp_ctx, r->in.pStat->ContainerID, &filter_search);
+	if (retval != MAPI_E_SUCCESS) {
+		DEBUG(5, ("[nspi][%s:%d] ab_fetch_filter failed\n", __FUNCTION__, __LINE__));
 		DCESRV_NSP_RETURN(r, MAPI_E_INVALID_BOOKMARK, NULL);
 	}
 
@@ -1110,11 +1116,19 @@ static void dcesrv_NspiResolveNames(struct dcesrv_call_state *dce_call,
 	/* Allocate output MIds */
 	paStr = r->in.paStr;
 	pMIds = talloc(mem_ctx, struct PropertyTagArray_r);
+	DCESRV_NSP_RETURN_IF(!pMIds, r, MAPI_E_NOT_ENOUGH_MEMORY, NULL);
 	pMIds->cValues = paStr->Count;
-	pMIds->aulPropTag = (uint32_t *) talloc_array(mem_ctx, uint32_t, pMIds->cValues);
+	pMIds->aulPropTag = (uint32_t *) talloc_array(pMIds, uint32_t, pMIds->cValues);
+	DCESRV_NSP_RETURN_IF(!pMIds->aulPropTag, r, MAPI_E_NOT_ENOUGH_MEMORY, pMIds);
+
 	pRows = talloc(mem_ctx, struct PropertyRowSet_r);
+	DCESRV_NSP_RETURN_IF(!pRows, r, MAPI_E_NOT_ENOUGH_MEMORY, pMIds);
 	pRows->cRows = 0;
-	pRows->aRow = talloc_array(mem_ctx, struct PropertyRow_r, pMIds->cValues);
+	pRows->aRow = talloc_array(pRows, struct PropertyRow_r, pMIds->cValues);
+	if (!pRows->aRow) {
+		retval = MAPI_E_NOT_ENOUGH_MEMORY;
+		goto error;
+	}
 
 	/* Step 2. Fetch AB container records */
 	for (i = 0; i < paStr->Count; i++) {
@@ -1122,15 +1136,32 @@ static void dcesrv_NspiResolveNames(struct dcesrv_call_state *dce_call,
 		char			*filter = talloc_strdup(mem_ctx, "");
 		int			j;
 
+		if (!filter) {
+			retval = MAPI_E_NOT_ENOUGH_MEMORY;
+			goto error;
+		}
 		/* Build search filter */
 		for (j = 0; j < ARRAY_SIZE(search_attr); j++) {
-			char *attr_filter = talloc_asprintf(mem_ctx, "(%s=%s)", search_attr[j], paStr->Strings[i]);
+			char *attr_filter = talloc_asprintf(mem_ctx, "(%s=%s)", search_attr[j],
+							    ldb_binary_encode_string(mem_ctx, paStr->Strings[i]));
+			if (!attr_filter) {
+				retval = MAPI_E_NOT_ENOUGH_MEMORY;
+				goto error;
+			}
 			filter = talloc_strdup_append(filter, attr_filter);
+			if (!filter) {
+				retval = MAPI_E_NOT_ENOUGH_MEMORY;
+				goto error;
+			}
 			talloc_free(attr_filter);
 		}
 
 		/* Search AD */
-		filter = talloc_asprintf(mem_ctx, "(&%s(|%s))", purportedSearch, filter);
+		filter = talloc_asprintf(mem_ctx, "(&%s(|%s))", filter_search, filter);
+		if (!filter) {
+			retval = MAPI_E_NOT_ENOUGH_MEMORY;
+			goto error;
+		}
 		ret = ldb_search(emsabp_ctx->samdb_ctx, mem_ctx, &ldb_res,
 				 ldb_get_default_basedn(emsabp_ctx->samdb_ctx),
 				 LDB_SCOPE_SUBTREE, recipient_attrs, "%s", filter);
@@ -1142,8 +1173,12 @@ static void dcesrv_NspiResolveNames(struct dcesrv_call_state *dce_call,
 			pMIds->aulPropTag[i] = MAPI_AMBIGUOUS;
 		} else {
 			pMIds->aulPropTag[i] = MAPI_RESOLVED;
-			emsabp_fetch_attrs_from_msg(mem_ctx, emsabp_ctx, &pRows->aRow[pRows->cRows],
-						    ldb_res->msgs[0], 0, 0, pPropTags);
+			retval = emsabp_fetch_attrs_from_msg(mem_ctx, emsabp_ctx, &pRows->aRow[pRows->cRows],
+							     ldb_res->msgs[0], 0, 0, pPropTags);
+			if (retval != MAPI_E_SUCCESS) {
+				DEBUG(5, ("[nspi][%s:%d] emsabp_fetch_attrs_from_msg failed\n", __FUNCTION__, __LINE__));
+				goto error;
+			}
 			pRows->cRows++;
 		}
 	}
@@ -1153,6 +1188,11 @@ static void dcesrv_NspiResolveNames(struct dcesrv_call_state *dce_call,
 		*r->out.ppRows = pRows;
 	}
 
+	DCESRV_NSP_RETURN(r, retval, NULL);
+error:
+	DEBUG(5, ("[nspi][%s:%d] unexpected error %d\n", __FUNCTION__, __LINE__, retval));
+	talloc_free(pMIds);
+	talloc_free(pRows);
 	DCESRV_NSP_RETURN(r, retval, NULL);
 }
 
@@ -1173,11 +1213,10 @@ static void dcesrv_NspiResolveNamesW(struct dcesrv_call_state *dce_call,
 {
 	enum MAPISTATUS			retval = MAPI_E_SUCCESS;
 	struct emsabp_context		*emsabp_ctx = NULL;
-	struct ldb_message		*ldb_msg_ab;
 	struct SPropTagArray		*pPropTags;
-	const char			*purportedSearch;
+	char				*filter_search = NULL;
 	struct PropertyTagArray_r	*pMIds = NULL;
-	struct PropertyRowSet_r			*pRows = NULL;
+	struct PropertyRowSet_r		*pRows = NULL;
 	struct StringsArrayW_r		*paWStr;
 	uint32_t			i;
 	int				ret;
@@ -1188,24 +1227,21 @@ static void dcesrv_NspiResolveNamesW(struct dcesrv_call_state *dce_call,
 	DEBUG(3, ("exchange_nsp: NspiResolveNamesW (0x14)\n"));
 
 	/* Step 0. Ensure incoming user is authenticated */
-		if (!dcesrv_call_authenticated(dce_call)) {
+	if (!dcesrv_call_authenticated(dce_call)) {
 		DEBUG(1, ("No challenge requested by client, cannot authenticate\n"));
 		DCESRV_NSP_RETURN(r, MAPI_E_LOGON_FAILED, NULL);
 	}
 
 	emsabp_ctx = dcesrv_find_emsabp_context(&r->in.handle->uuid);
 	if (!emsabp_ctx) {
+		DEBUG(5, ("[nspi][%s:%d] emsabp_context not found\n", __FUNCTION__, __LINE__));
 		DCESRV_NSP_RETURN(r, MAPI_E_CALL_FAILED, NULL);
 	}
 
 	/* Step 1. Prepare in/out data */
-	retval = emsabp_ab_container_by_id(mem_ctx, emsabp_ctx, r->in.pStat->ContainerID, &ldb_msg_ab);
-	if (!MAPI_STATUS_IS_OK(retval)) {
-		DCESRV_NSP_RETURN(r, MAPI_E_INVALID_BOOKMARK, NULL);
-	}
-
-	purportedSearch = ldb_msg_find_attr_as_string(ldb_msg_ab, "purportedSearch", NULL);
-	if (!purportedSearch) {
+	retval = emsabp_ab_fetch_filter(mem_ctx, emsabp_ctx, r->in.pStat->ContainerID, &filter_search);
+	if (retval != MAPI_E_SUCCESS) {
+		DEBUG(5, ("[nspi][%s:%d] ab_fetch_filter failed\n", __FUNCTION__, __LINE__));
 		DCESRV_NSP_RETURN(r, MAPI_E_INVALID_BOOKMARK, NULL);
 	}
 
@@ -1226,11 +1262,19 @@ static void dcesrv_NspiResolveNamesW(struct dcesrv_call_state *dce_call,
 	/* Allocate output MIds */
 	paWStr = r->in.paWStr;
 	pMIds = talloc(mem_ctx, struct PropertyTagArray_r);
+	DCESRV_NSP_RETURN_IF(!pMIds, r, MAPI_E_NOT_ENOUGH_MEMORY, NULL);
 	pMIds->cValues = paWStr->Count;
-	pMIds->aulPropTag = talloc_array(mem_ctx, uint32_t, pMIds->cValues);
+	pMIds->aulPropTag = talloc_array(pMIds, uint32_t, pMIds->cValues);
+	DCESRV_NSP_RETURN_IF(!pMIds->aulPropTag, r, MAPI_E_NOT_ENOUGH_MEMORY, pMIds);
+
 	pRows = talloc(mem_ctx, struct PropertyRowSet_r);
+	DCESRV_NSP_RETURN_IF(!pRows, r, MAPI_E_NOT_ENOUGH_MEMORY, pMIds);
 	pRows->cRows = 0;
 	pRows->aRow = talloc_array(mem_ctx, struct PropertyRow_r, pMIds->cValues);
+	if (!pRows->aRow) {
+		retval = MAPI_E_NOT_ENOUGH_MEMORY;
+		goto error;
+	}
 
 	/* Step 2. Fetch AB container records */
 	for (i = 0; i < paWStr->Count; i++) {
@@ -1238,15 +1282,32 @@ static void dcesrv_NspiResolveNamesW(struct dcesrv_call_state *dce_call,
 		char			*filter = talloc_strdup(mem_ctx, "");
 		int			j;
 
+		if (!filter) {
+			retval = MAPI_E_NOT_ENOUGH_MEMORY;
+			goto error;
+		}
 		/* Build search filter */
 		for (j = 0; j < ARRAY_SIZE(search_attr); j++) {
-			char	*attr_filter = talloc_asprintf(mem_ctx, "(%s=%s)", search_attr[j], paWStr->Strings[i]);
+			char *attr_filter = talloc_asprintf(mem_ctx, "(%s=%s)", search_attr[j],
+							    ldb_binary_encode_string(mem_ctx, paWStr->Strings[i]));
+			if (!attr_filter) {
+				retval = MAPI_E_NOT_ENOUGH_MEMORY;
+				goto error;
+			}
 			filter = talloc_strdup_append(filter, attr_filter);
+			if (!filter) {
+				retval = MAPI_E_NOT_ENOUGH_MEMORY;
+				goto error;
+			}
 			talloc_free(attr_filter);
 		}
 
 		/* Search AD */
-		filter = talloc_asprintf(mem_ctx, "(&%s(|%s))", purportedSearch, filter);
+		filter = talloc_asprintf(mem_ctx, "(&%s(|%s))", filter_search, filter);
+		if (!filter) {
+			retval = MAPI_E_NOT_ENOUGH_MEMORY;
+			goto error;
+		}
 		ret = ldb_search(emsabp_ctx->samdb_ctx, mem_ctx, &ldb_res,
 				 ldb_get_default_basedn(emsabp_ctx->samdb_ctx),
 				 LDB_SCOPE_SUBTREE, recipient_attrs, "%s", filter);
@@ -1258,8 +1319,12 @@ static void dcesrv_NspiResolveNamesW(struct dcesrv_call_state *dce_call,
 			pMIds->aulPropTag[i] = MAPI_AMBIGUOUS;
 		} else {
 			pMIds->aulPropTag[i] = MAPI_RESOLVED;
-			emsabp_fetch_attrs_from_msg(mem_ctx, emsabp_ctx, &pRows->aRow[pRows->cRows],
-						    ldb_res->msgs[0], 0, 0, pPropTags);
+			retval = emsabp_fetch_attrs_from_msg(mem_ctx, emsabp_ctx, &pRows->aRow[pRows->cRows],
+							     ldb_res->msgs[0], 0, 0, pPropTags);
+			if (retval != MAPI_E_SUCCESS) {
+				DEBUG(5, ("[nspi][%s:%d] emsabp_fetch_attrs_from_msg failed\n", __FUNCTION__, __LINE__));
+				goto error;
+			}
 			pRows->cRows++;
 		}
 	}
@@ -1269,6 +1334,11 @@ static void dcesrv_NspiResolveNamesW(struct dcesrv_call_state *dce_call,
 		*r->out.ppRows = pRows;
 	}
 
+	DCESRV_NSP_RETURN(r, retval, NULL);
+error:
+	DEBUG(5, ("[nspi][%s:%d] unexpected error %d\n", __FUNCTION__, __LINE__, retval));
+	talloc_free(pMIds);
+	talloc_free(pRows);
 	DCESRV_NSP_RETURN(r, retval, NULL);
 }
 

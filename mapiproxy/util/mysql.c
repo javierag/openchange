@@ -1,10 +1,55 @@
+/*
+   MySQL util functions
+
+   OpenChange Project
+
+   Copyright (C) Jesús García Sáez 2014
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 3 of the License, or
+   (at your option) any later version.
+   
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include "mysql.h"
 
 #include <time.h>
 #include <util/debug.h>
+#include "ccan/htable/htable.h"
+#include "ccan/hash/hash.h"
 #include "libmapi/mapicode.h"
 #include "libmapi/libmapi.h"
 #include "libmapi/libmapi_private.h"
+
+
+/* Items stored on ht table */
+struct conn_v {
+	MYSQL		*conn;
+	const char	*connection_string;
+};
+
+/* Rehash function for ht table */
+static size_t _ht_rehash(const void *e, void *unused)
+{
+	return hash_string(((struct conn_v *)e)->connection_string);
+}
+
+/* Comparison function to get items from ht table */
+static bool _ht_cmp(const void *e, void *string)
+{
+	return strcmp(((struct conn_v *)e)->connection_string, (const char *)string) == 0;
+}
+
+/* This is a dictionary [connection_string] -> [MYSQL *] (actually struct conn_v) */
+static struct htable ht = HTABLE_INITIALIZER(ht, _ht_rehash, NULL);
 
 
 static float timespec_diff_in_seconds(struct timespec *end, struct timespec *start)
@@ -14,101 +59,233 @@ static float timespec_diff_in_seconds(struct timespec *end, struct timespec *sta
 		/ 1000000000;
 }
 
+/**
+    \details Close and delete all mysql connections already open
+ */
+void close_all_connections(void)
+{
+	struct htable_iter 	i;
+	struct conn_v		*entry;
 
+	entry = htable_first(&ht, &i);
+	while (entry) {
+		DEBUG(3, ("Closing %s\n", entry->connection_string));
+		mysql_close(entry->conn);
+		entry = htable_next(&ht, &i);
+	}
+	htable_clear(&ht);
+}
+
+/**
+   \details Parse mysql connection string with format like:
+		mysql://user[:pass]@host[:port]/database
+
+   \param mem_ctx pointer to the memory context
+   \param connection_string pointer to conenction string
+   \param host out parameter to store host into
+   \param port out parameter to store connection port - optional
+   \param user out parameter to store user name into
+   \param passwd out parameter to store password into - optional
+   \param db out parameter to store database name into
+
+   \return true on success, false if invalid connection string
+ */
 static bool parse_connection_string(TALLOC_CTX *mem_ctx,
 				    const char *connection_string,
-				    char **host, char **user, char **passwd,
-				    char **db)
+				    char **host, int *port, char **user,
+				    char **passwd, char **db)
 {
-	// connection_string has format mysql://user[:pass]@host/database
-	int prefix_size = strlen("mysql://");
-	const char *s = connection_string + prefix_size;
-	if (!connection_string || strlen(connection_string) < prefix_size ||
-	    !strstr(connection_string, "mysql://") || !strchr(s, '@') ||
-	    !strchr(s, '/')) {
-		// Invalid format
+	const char	*user_p, *pass_p, *host_p, *port_p, *db_p, *port_str;
+	size_t		user_len, pass_len, host_len, port_len;
+	uint64_t	port_number;
+
+	/* Sanity check on input parameters */
+	if (!connection_string || !connection_string[0]) {
 		return false;
 	}
-	if (strchr(s, ':') == NULL || strchr(s, ':') > strchr(s, '@')) {
-		// No password
-		int user_size = strchr(s, '@') - s;
-		*user = talloc_zero_array(mem_ctx, char, user_size + 1);
-		strncpy(*user, s, user_size);
-		(*user)[user_size] = '\0';
-		*passwd = talloc_zero_array(mem_ctx, char, 1);
-		(*passwd)[0] = '\0';
-	} else {
-		// User
-		int user_size = strchr(s, ':') - s;
-		*user = talloc_zero_array(mem_ctx, char, user_size);
-		strncpy(*user, s, user_size);
-		(*user)[user_size] = '\0';
-		// Password
-		int passwd_size = strchr(s, '@') - strchr(s, ':') - 1;
-		*passwd = talloc_zero_array(mem_ctx, char, passwd_size + 1);
-		strncpy(*passwd, strchr(s, ':') + 1, passwd_size);
-		(*passwd)[passwd_size] = '\0';
+	if (!host || !port || !user || !passwd || !db) {
+		return false;
 	}
-	// Host
-	int host_size = strchr(s, '/') - strchr(s, '@') - 1;
-	*host = talloc_zero_array(mem_ctx, char, host_size + 1);
-	strncpy(*host, strchr(s, '@') + 1, host_size);
-	(*host)[host_size] = '\0';
-	// Database name
-	int db_size = strlen(strchr(s, '/') + 1);
-	*db = talloc_zero_array(mem_ctx, char, db_size + 1);
-	strncpy(*db, strchr(s, '/') + 1, db_size);
-	(*db)[db_size] = '\0';
+
+	/* check for prefix - len(mysql://) = 8 */
+	if (strncasecmp(connection_string, "mysql://", 8)) {
+		return false;
+	}
+
+	/* skip prefix */
+	user_p = connection_string + 8;
+	/* find out host offset */
+	host_p = strchr(user_p, '@');
+	if (!host_p) {
+		return false;
+	}
+	host_p++;
+	/* find out db name offset */
+	db_p = strchr(host_p, '/');
+	if (!db_p) {
+		return false;
+	}
+	db_p++;
+
+	if (!db_p[0]) {
+		/* empty database name */
+		return false;
+	}
+
+	/* check for password - it is optional */
+	pass_p = strchr(user_p, ':');
+	if (pass_p) {
+		pass_p++;
+		if (pass_p > host_p) {
+			/* : found after host offset! no password */
+			user_len = host_p - user_p - 1;
+			pass_len = 0;
+			pass_p = NULL;
+		} else if (pass_p == user_p) {
+			/* username is empty */
+			return false;
+		} else {
+			user_len = pass_p - user_p - 1;
+			pass_len = host_p  - pass_p - 1;
+		}
+	} else {
+		user_len = host_p - user_p - 1;
+		pass_len = 0;
+	}
+
+	if (!user_len) {
+		/* username is empty */
+		return false;
+	}
+
+	/* check for port - it is optional */
+	port_p = strchr(host_p, ':');
+	if (port_p) {
+		port_p++;
+		if (port_p > db_p) {
+			/* : found after db offset and db cannot have ':' */
+			return false;
+		}
+		if (port_p == host_p) {
+			/* host is empty */
+			return false;
+		}
+		host_len = port_p - host_p -1;
+		port_len = db_p - port_p - 1;
+	} else {
+		host_len = db_p - host_p - 1;
+		port_len = 0;
+	}
+
+	if (!host_len) {
+		/* no hostname in connection string */
+		return false;
+	}
+
+	*user = talloc_strndup(mem_ctx, user_p, user_len);
+	*passwd = talloc_strndup(mem_ctx, pass_p, pass_len);
+	*host = talloc_strndup(mem_ctx, host_p, host_len);
+	*db = talloc_strdup(mem_ctx, db_p);
+	if (port_len > 0) {
+		port_str = talloc_strndup(mem_ctx, port_p, port_len);
+		if (!convert_string_to_ull(port_str, &port_number)) {
+			return false;
+		}
+		*port = (int) port_number;
+	} else {
+		*port = 0;
+	}
 
 	return true;
 }
 
 
-MYSQL* create_connection(const char *connection_string, MYSQL **conn)
+MYSQL *create_connection(const char *connection_string, MYSQL **conn)
 {
-	TALLOC_CTX *mem_ctx;
-	my_bool reconnect;
-	char *host, *user, *passwd, *db, *sql;
-	bool parsed;
+	TALLOC_CTX	*mem_ctx;
+	my_bool		reconnect;
+	char		*host, *user, *passwd, *db, *sql;
+	int		port;
+	bool		parsed;
+	struct conn_v	*entry = NULL, *retval = NULL;
 
-	if (*conn != NULL) return *conn;
+	if (conn == NULL) return NULL;
 
-	mem_ctx = talloc_zero(NULL, TALLOC_CTX);
+	retval = htable_get(&ht, hash_string(connection_string), _ht_cmp, connection_string);
+	if (retval) {
+		DEBUG(5, ("[MYSQL] Found connection, reusing it %"PRIu32"\n", hash_string(connection_string)));
+		*conn = retval->conn;
+		return *conn;
+	}
+
 	*conn = mysql_init(NULL);
 	reconnect = true;
 	mysql_options(*conn, MYSQL_OPT_RECONNECT, &reconnect);
+
+	mem_ctx = talloc_zero(NULL, TALLOC_CTX);
+	if (!mem_ctx) return NULL;
+
 	parsed = parse_connection_string(mem_ctx, connection_string,
-					 &host, &user, &passwd, &db);
+					 &host, &port, &user, &passwd, &db);
 	if (!parsed) {
-		DEBUG(0, ("Wrong connection string to mysql %s", connection_string));
+		DEBUG(1, ("[MYSQL] Wrong connection string %s\n", connection_string));
 		*conn = NULL;
-		goto end;
-	}
-	// First try to connect to the database, if it fails try to create it
-	if (mysql_real_connect(*conn, host, user, passwd, db, 0, NULL, 0)) {
 		goto end;
 	}
 
+	*conn = mysql_init(NULL);
+
+	// First try to connect to the database, if it fails try to create it
+	if (mysql_real_connect(*conn, host, user, passwd, db, port, NULL, 0)) {
+		DEBUG(5, ("[MYSQL] Connection done\n"));
+		goto connected;
+	}
+
+	reconnect = true;
+	mysql_options(*conn, MYSQL_OPT_RECONNECT, &reconnect);
+
 	// Try to create database
-	if (!mysql_real_connect(*conn, host, user, passwd, NULL, 0, NULL, 0)) {
+	if (!mysql_real_connect(*conn, host, user, passwd, NULL, port, NULL, 0)) {
 		// Nop
-		DEBUG(0, ("Can't connect to mysql using %s", connection_string));
+		DEBUG(1, ("[MYSQL] Can't connect to server using %s, error: %s\n",
+			  connection_string, mysql_error(*conn)));
+		mysql_close(*conn);
 		*conn = NULL;
+		goto end;
 	} else {
+		DEBUG(5, ("[MYSQL] Connection done, let's create the database\n"));
 		// Connect it!, let's try to create database
 		sql = talloc_asprintf(mem_ctx, "CREATE DATABASE %s", db);
 		if (mysql_query(*conn, sql) != 0 || mysql_select_db(*conn, db) != 0) {
-			DEBUG(0, ("Can't connect to mysql using %s",
-				  connection_string));
+			DEBUG(1, ("[MYSQL] Can't connect to server using %s, error: %s\n",
+				  connection_string, mysql_error(*conn)));
+			mysql_close(*conn);
 			*conn = NULL;
+			goto end;
 		}
 	}
+
+connected:
+	// This entries will never be deallocated
+	entry = talloc_zero(talloc_autofree_context(), struct conn_v);
+	entry->connection_string = talloc_strdup(entry, connection_string);
+	entry->conn = *conn;
+	// Store the new connection in our table
+	if (!htable_add(&ht, hash_string(connection_string), entry)) {
+		DEBUG(1, ("[MYSQL] ERROR adding new connection to internal pool of connections\n"));
+	} else {
+		DEBUG(5, ("[MYSQL] Stored new connection %"PRIu32"\n", hash_string(connection_string)));
+	}
+
 end:
 	talloc_free(mem_ctx);
 	return *conn;
-
 }
 
+void release_connection(MYSQL *conn)
+{
+	// Do nothing
+}
 
 enum MYSQLRESULT execute_query(MYSQL *conn, const char *sql)
 {
@@ -117,8 +294,7 @@ enum MYSQLRESULT execute_query(MYSQL *conn, const char *sql)
 
 	clock_gettime(CLOCK_MONOTONIC, &start);
 	if (mysql_query(conn, sql) != 0) {
-		printf("Error on query `%s`: %s\n", sql, mysql_error(conn));
-		DEBUG(5, ("Error on query `%s`: %s", sql, mysql_error(conn)));
+		DEBUG(3, ("Error on query `%s`: %s\n", sql, mysql_error(conn)));
 		return MYSQL_ERROR;
 	}
 	clock_gettime(CLOCK_MONOTONIC, &end);
@@ -140,11 +316,13 @@ enum MYSQLRESULT select_without_fetch(MYSQL *conn, const char *sql,
 	enum MYSQLRESULT ret;
 
 	ret = execute_query(conn, sql);
-	OPENCHANGE_RETVAL_IF(ret != MYSQL_SUCCESS, ret, NULL);
+	if (ret != MYSQL_SUCCESS) {
+		return ret;
+	}
 
 	*res = mysql_store_result(conn);
 	if (*res == NULL) {
-		DEBUG(0, ("Error getting results of `%s`: %s", sql,
+		DEBUG(0, ("Error getting results of `%s`: %s\n", sql,
 			  mysql_error(conn)));
 		return MYSQL_ERROR;
 	}
@@ -164,7 +342,7 @@ enum MYSQLRESULT select_all_strings(TALLOC_CTX *mem_ctx, MYSQL *conn,
 {
 	MYSQL_RES *res;
 	struct StringArrayW_r *results;
-	uint32_t i, num_rows;
+	uint32_t i, num_rows = 0;
 	enum MYSQLRESULT ret;
 
 	ret = select_without_fetch(conn, sql, &res);
@@ -196,7 +374,7 @@ enum MYSQLRESULT select_all_strings(TALLOC_CTX *mem_ctx, MYSQL *conn,
 		for (i = 0; i < results->cValues; i++) {
 			MYSQL_ROW row = mysql_fetch_row(res);
 			if (row == NULL) {
-				DEBUG(0, ("Error getting row %d of `%s`: %s", i, sql,
+				DEBUG(0, ("Error getting row %d of `%s`: %s\n", i, sql,
 					  mysql_error(conn)));
 				mysql_free_result(res);
 				return MYSQL_ERROR;
@@ -221,11 +399,13 @@ enum MYSQLRESULT select_first_string(TALLOC_CTX *mem_ctx, MYSQL *conn,
 	enum MYSQLRESULT ret;
 
 	ret = select_without_fetch(conn, sql, &res);
-	OPENCHANGE_RETVAL_IF(ret != MYSQL_SUCCESS, ret, NULL);
+	if (ret != MYSQL_SUCCESS) {
+		return ret;
+	}
 
 	MYSQL_ROW row = mysql_fetch_row(res);
 	if (row == NULL) {
-		DEBUG(0, ("Error getting row of `%s`: %s", sql,
+		DEBUG(0, ("Error getting row of `%s`: %s\n", sql,
 			  mysql_error(conn)));
 		return MYSQL_ERROR;
 	}
@@ -245,7 +425,10 @@ enum MYSQLRESULT select_first_uint(MYSQL *conn, const char *sql,
 	enum MYSQLRESULT ret;
 
 	ret = select_first_string(mem_ctx, conn, sql, &result);
-	OPENCHANGE_RETVAL_IF(ret != MYSQL_SUCCESS, ret, mem_ctx);
+	if (ret != MYSQL_SUCCESS) {
+		talloc_free(mem_ctx);
+		return ret;
+	}
 
 	ret = MYSQL_ERROR;
 	if (convert_string_to_ull(result, n)) {
@@ -271,53 +454,60 @@ bool table_exists(MYSQL *conn, char *table_name)
 	return created;
 }
 
+/**
+   \details Create the existing sql schema in filename
 
-bool create_schema(MYSQL *conn, char *schema_file)
+   \param conn pointer to the MySQL connection
+   \param filename path to the schema file
+
+   \fixme find a better approach than allocating buffer of the file size
+
+   \return bool indicating success
+ */
+bool create_schema(MYSQL *conn, const char *filename)
 {
-	TALLOC_CTX *mem_ctx;
-	FILE *f;
-	int sql_size, bytes_read;
-	char *schema, *query;
-	bool ret, queries_to_execute;
+	TALLOC_CTX	*mem_ctx = NULL;
+	struct stat	sb;
+	FILE		*f = NULL;
+	int		ret;
+	int		len;
+	char		*query, *schema;
+	bool		queries_to_execute;
+	bool		schema_created = false;
 
-	f = fopen(schema_file, "r");
-	if (!f) {
-		DEBUG(0, ("schema file %s not found", schema_file));
-		ret = false;
-		goto end;
-	}
-	fseek(f, 0, SEEK_END);
-	sql_size = ftell(f);
-	rewind(f);
-	mem_ctx = talloc_zero(NULL, TALLOC_CTX);
-	schema = talloc_zero_array(mem_ctx, char, sql_size + 1);
-	bytes_read = fread(schema, sizeof(char), sql_size, f);
-	if (bytes_read != sql_size) {
-		DEBUG(0, ("error reading schema file %s", schema_file));
-		ret = false;
-		goto end;
-	}
-	// schema is a series of create table/index queries separated by ';'
-	query = strtok (schema, ";");
+	/* Sanity checks */
+	if (!conn || !filename) return false;
+
+	mem_ctx = talloc_named(NULL, 0, "create_schema");
+	if (!mem_ctx) goto end;
+
+	ret = stat(filename, &sb);
+	if (ret == -1 || sb.st_size == 0) goto end;
+
+	schema = talloc_zero_array(mem_ctx, char, sb.st_size + 1);
+	if (!schema) goto end;
+
+	f = fopen(filename, "r");
+	if (!f) goto end;
+
+	len = fread(schema, sizeof(char), sb.st_size, f);
+	if (len != sb.st_size) goto end;
+
+	query = strtok(schema, ";");
 	queries_to_execute = query != NULL;
 	while (queries_to_execute) {
-		ret = mysql_query(conn, query) ? false : true;
-		if (!ret) {
-			DEBUG(0, ("Error creating schema: %s\n", mysql_error(conn)));
-			break;
-		}
+		ret = mysql_query(conn, query);
+		if (ret) goto end;
 		query = strtok(NULL, ";");
-		queries_to_execute = ret && query && strlen(query) > 10;
+		queries_to_execute = query && strlen(query) > 10;
 	}
+	schema_created = true;
 end:
-	if (f) {
-		talloc_free(mem_ctx);
-		fclose(f);
-	}
+	if (mem_ctx) talloc_free(mem_ctx);
+	if (f) fclose(f);
 
-	return ret;
+	return schema_created;
 }
-
 
 const char* _sql_escape(TALLOC_CTX *mem_ctx, const char *s, char c)
 {
@@ -354,7 +544,7 @@ bool convert_string_to_ull(const char *str, uint64_t *ret)
 		if (aux != NULL && *aux == '\0') {
 			retval = true;
 		} else {
-			DEBUG(0, ("ERROR converting %s into ull\n", str));
+			DEBUG(1, ("ERROR converting %s into ull\n", str));
 		}
 	}
 

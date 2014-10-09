@@ -3,7 +3,7 @@
 
    EMSMDBP: EMSMDB Provider implementation
 
-   Copyright (C) Julien Kerihuel 2009-2013
+   Copyright (C) Julien Kerihuel 2009-2014
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -65,7 +65,7 @@ static void oxcmsg_fill_RecipientRow(TALLOC_CTX *mem_ctx, struct emsmdbp_context
 			 ldb_get_default_basedn(emsmdbp_ctx->samdb_ctx),
 			 LDB_SCOPE_SUBTREE, recipient_attrs,
 			 "(&(objectClass=user)(sAMAccountName=*%s*)(!(objectClass=computer)))",
-			 recipient->username);
+			 ldb_binary_encode_string(mem_ctx, recipient->username));
 	/* If the search failed, build an external recipient: very basic for the moment */
 	if (ret != LDB_SUCCESS || !res->count) {
 		DEBUG(0, ("record not found for %s\n", recipient->username));
@@ -399,8 +399,8 @@ _PUBLIC_ enum MAPISTATUS EcDoRpc_RopCreateMessage(TALLOC_CTX *mem_ctx,
 	}
 
 	/* This should be handled differently here: temporary hack */
-	retval = mapistore_indexing_get_new_folderID(emsmdbp_ctx->mstore_ctx, &messageID);
-	if (retval) {
+	ret = mapistore_indexing_get_new_folderID(emsmdbp_ctx->mstore_ctx, &messageID);
+	if (ret) {
 		mapi_repl->error_code = MAPI_E_NO_SUPPORT;
 		goto end;
 	}
@@ -689,7 +689,7 @@ _PUBLIC_ enum MAPISTATUS EcDoRpc_RopRemoveAllRecipients(TALLOC_CTX *mem_ctx,
 	if (mapistore) {
 		contextID = emsmdbp_get_contextID(object);
 		memset(&columns, 0, sizeof(struct SPropTagArray));
-		mapistore_message_modify_recipients(emsmdbp_ctx->mstore_ctx, contextID, &columns, object->backend_object, 0, NULL);
+		mapistore_message_modify_recipients(emsmdbp_ctx->mstore_ctx, contextID, object->backend_object, &columns, 0, NULL);
 	}
 	else {
 		DEBUG(0, ("Not implement yet - shouldn't occur\n"));
@@ -701,46 +701,88 @@ end:
 	return MAPI_E_SUCCESS;
 }
 
+/**
+   \details Resolve partial username in x500dn format to a sAMAccountName
+            for corresponding user. If no such user, then just returns
+            reconstructed x500dn (legaxyExchangeDN)
+
+   \param mem_ctx pointer to the memory context
+   \param emsmdbp_ctx pointer to the emsmdb provider context
+   \param prefix_size amount of DN Prefix to use
+   \param x500name partial (or full) x500dn to resolve
+   \param username_p pointe to buffer to store resolved user name
+
+   \return MAPI_E_SUCCESS on success, otherwise MAPI error
+ */
+static enum MAPISTATUS oxcmsg_resolve_partial_x500name(TALLOC_CTX *mem_ctx,
+						       struct emsmdbp_context *emsmdbp_ctx,
+						       uint8_t prefix_size, const char *x500name,
+						       char **username_p)
+{
+	char			*x500dn;
+	char			*username;
+	const char * const	attrs[] = { "sAMAccountName", NULL };
+	int			ret;
+	struct ldb_result	*res = NULL;
+
+	OPENCHANGE_RETVAL_IF(!username_p, MAPI_E_INVALID_PARAMETER, NULL);
+
+	/* Step 0. Restore full x500dn */
+	if (prefix_size != 0) {
+		/* sanity check for DNPrefix valid length */
+		OPENCHANGE_RETVAL_IF(!emsmdbp_ctx->szDNPrefix, MAPI_E_INVALID_PARAMETER, NULL);
+		if (prefix_size > strlen(emsmdbp_ctx->szDNPrefix)) {
+			DEBUG(0, ("Requested x500name prefix is beyond what we have for DNPrefix=[%s]\n",
+					emsmdbp_ctx->szDNPrefix));
+			return MAPI_E_INVALID_PARAMETER;
+		}
+
+		/* concatenate x500name suffix with szDNPrefix we are using at the moment */
+		size_t name_len = prefix_size + strlen(x500name) + 1;
+		x500dn = talloc_zero_array(mem_ctx, char, name_len);
+		OPENCHANGE_RETVAL_IF(!x500dn, MAPI_E_NOT_ENOUGH_MEMORY, NULL);
+
+		strncpy(x500dn, emsmdbp_ctx->szDNPrefix, prefix_size);
+		strcpy(x500dn + prefix_size, x500name);
+	} else {
+		x500dn = discard_const_p(char, x500name);
+	}
+
+	/* Step 1. Try to find out an account with x500dn we have */
+	ret = ldb_search(emsmdbp_ctx->samdb_ctx, mem_ctx, &res,
+			 ldb_get_default_basedn(emsmdbp_ctx->samdb_ctx), LDB_SCOPE_SUBTREE,
+			 attrs, "legacyExchangeDN=%s", x500dn);
+	if (ret != LDB_SUCCESS || res->count != 1) {
+		/* no such user, just pass what we have */
+		username = x500dn;
+	} else {
+		username = discard_const_p(char, ldb_msg_find_attr_as_string(res->msgs[0], "sAMAccountName", x500dn));
+	}
+
+	*username_p = username;
+
+	return MAPI_E_SUCCESS;
+}
+
 static enum MAPISTATUS oxcmsg_parse_ModifyRecipientRow(TALLOC_CTX *mem_ctx, struct emsmdbp_context *emsmdbp_ctx,
 						       struct ModifyRecipientRow *recipient_row,
 						       uint16_t prop_count, enum MAPITAGS *properties,
 						       struct mapistore_message_recipient *recipient)
 {
-	int			i, data_pos;
-	uint8_t			*src_value;
-	void			*dest_value;
-	char			*uni_value;
-	struct Binary_r		*bin_value;
-	struct FILETIME		*ft_value;
-	size_t			value_size = 0;
-	const uint16_t		*unicode_char;
-	size_t			dest_size, dest_len;
+	int			i;
+	uint32_t		data_pos;
+	const void		*prop_value;
+	enum MAPISTATUS		retval;
 
 	recipient->type = recipient_row->RecipClass;
 
 	recipient->username = NULL;
 	if ((recipient_row->RecipientRow.RecipientFlags & 0x07) == 1) {
-		if (recipient_row->RecipientRow.AddressPrefixUsed.prefix_size != 0) {
-			/* sanity check for DNPrefix valid length */
-			OPENCHANGE_RETVAL_IF(!emsmdbp_ctx->szDNPrefix, MAPI_E_INVALID_PARAMETER, NULL);
-			if (recipient_row->RecipientRow.AddressPrefixUsed.prefix_size > strlen(emsmdbp_ctx->szDNPrefix)) {
-				DEBUG(0, ("Requested x500name prefix is beyond what we have for DNPrefix=[%s]\n",
-						emsmdbp_ctx->szDNPrefix));
-				return MAPI_E_INVALID_PARAMETER;
-			}
-
-			/* concatenate x500name suffix with szDNPrefix we are using at the moment */
-			size_t name_len = recipient_row->RecipientRow.AddressPrefixUsed.prefix_size
-					+ strlen(recipient_row->RecipientRow.X500DN.recipient_x500name) + 1;
-			recipient->username = talloc_zero_array(mem_ctx, char, name_len);
-			OPENCHANGE_RETVAL_IF(!recipient->username, MAPI_E_NOT_ENOUGH_MEMORY, NULL);
-
-			strncpy(recipient->username, emsmdbp_ctx->szDNPrefix, recipient_row->RecipientRow.AddressPrefixUsed.prefix_size);
-			strcpy(recipient->username + recipient_row->RecipientRow.AddressPrefixUsed.prefix_size,
-					recipient_row->RecipientRow.X500DN.recipient_x500name);
-		} else {
-			recipient->username = (char *) recipient_row->RecipientRow.X500DN.recipient_x500name;
-		}
+		retval = oxcmsg_resolve_partial_x500name(mem_ctx, emsmdbp_ctx,
+							 recipient_row->RecipientRow.AddressPrefixUsed.prefix_size,
+							 recipient_row->RecipientRow.X500DN.recipient_x500name,
+							 &recipient->username);
+		OPENCHANGE_RETVAL_IF(retval != MAPI_E_SUCCESS, retval, NULL);
 	}
 
 	recipient->data = talloc_array(mem_ctx, void *, prop_count + 2);
@@ -768,13 +810,9 @@ static enum MAPISTATUS oxcmsg_parse_ModifyRecipientRow(TALLOC_CTX *mem_ctx, stru
 	default:
 		recipient->data[1] = NULL;
 	}
-      
+
 	data_pos = 0;
 	for (i = 0; i < prop_count; i++) {
-		if (properties[i] & MV_FLAG) {
-			DEBUG(0, ("multivalue not supported yet\n"));
-			abort();
-		}
 
 		if (recipient_row->RecipientRow.layout) {
 			data_pos++;
@@ -787,59 +825,16 @@ static enum MAPISTATUS oxcmsg_parse_ModifyRecipientRow(TALLOC_CTX *mem_ctx, stru
 			}
 		}
 
-		dest_value = src_value = recipient_row->RecipientRow.prop_values.data + data_pos;
-		switch (properties[i] & 0xffff) {
-		case PT_BOOLEAN:
-			value_size = sizeof(uint8_t);
-			break;
-		case PT_I2:
-			value_size = sizeof(uint16_t);
-			break;
-		case PT_LONG:
-		case PT_ERROR:
-			value_size = sizeof(uint32_t);
-			break;
-		case PT_DOUBLE:
-			value_size = sizeof(double);
-			break;
-		case PT_I8:
-			value_size = sizeof(uint64_t);
-			break;
-		case PT_STRING8:
-			value_size = strlen(dest_value) + 1;
-			break;
-		case PT_SYSTIME:
-			ft_value = talloc_zero(recipient->data, struct FILETIME);
-			ft_value->dwLowDateTime = *(uint32_t *) src_value;
-			ft_value->dwHighDateTime = *(uint32_t *) (src_value + 4);
-			value_size = sizeof(uint64_t);
-			dest_value = ft_value;
-			break;
-		case PT_UNICODE:
-			unicode_char = (const uint16_t *) src_value;
-			value_size = 0;
-			while (*unicode_char++)
-				value_size += 2;
-			dest_size = value_size * 3 + 3;
-			uni_value = talloc_array(recipient->data, char, dest_size);
-			convert_string(CH_UTF16LE, CH_UTF8,
-				       src_value, value_size,
-				       uni_value, dest_size,
-				       &dest_len);
-			uni_value[dest_len] = 0;
-			dest_value = uni_value;
-			value_size += 2;
-			break;
-		case PT_BINARY:
-			bin_value = talloc_zero(recipient->data, struct Binary_r);
-			bin_value->cb = *(uint16_t *) src_value;
-			bin_value->lpb = src_value + 2;
-			value_size = (bin_value->cb + sizeof(uint16_t));
-			dest_value = bin_value;
-			break;
+		prop_value = pull_emsmdb_property(recipient->data, &data_pos, properties[i],
+						  &recipient_row->RecipientRow.prop_values);
+		if (prop_value == NULL) {
+			DEBUG(0, ("%s: Failed to convert RecipientProperty with tag [%s]. "
+				  "We are going to save it as-is.\n",
+				  __PRETTY_FUNCTION__, get_proptag_name(properties[i])));
+			TALLOC_FREE(recipient->data);
+			return MAPI_E_TYPE_NO_SUPPORT;
 		}
-		recipient->data[i+2] = dest_value;
-		data_pos += value_size;
+		recipient->data[i+2] = discard_const(prop_value);
 	}
 
 	return MAPI_E_SUCCESS;
@@ -1142,6 +1137,87 @@ _PUBLIC_ enum MAPISTATUS EcDoRpc_RopSetMessageReadFlag(TALLOC_CTX *mem_ctx,
 end:
 	*size += libmapiserver_RopSetMessageReadFlag_size(mapi_repl);
 
+	return MAPI_E_SUCCESS;
+}
+
+
+/**
+   \details EcDoRpc GetMessageStatus (0x1c) Rop. This operation
+   returns the status of a message in a folder.
+
+   \param mem_ctx pointer to the memory context
+   \param emsmdbp_ctx pointer to the emsmdb provider context
+   \param mapi_req pointer to the GetMessageStatus EcDoRpc_MAPI_REQ
+   structure
+   \param mapi_repl pointer to the GetMessageStatus EcDoRpc_MAPI_REPL
+   structure
+   \param handles pointer to the MAPI handles array
+   \param size pointer to the mapi_response size to update
+
+   \todo Replace Stub implementation with mapistore calls
+
+   \return MAPI_E_SUCCESS on success, otherwise MAPI error
+ */
+_PUBLIC_ enum MAPISTATUS EcDoRpc_RopGetMessageStatus(TALLOC_CTX *mem_ctx,
+						     struct emsmdbp_context *emsmdbp_ctx,
+						     struct EcDoRpc_MAPI_REQ *mapi_req,
+						     struct EcDoRpc_MAPI_REPL *mapi_repl,
+						     uint32_t *handles, uint16_t *size)
+{
+	enum MAPISTATUS		retval;
+	uint32_t		handle;
+	struct mapi_handles	*rec = NULL;
+	struct emsmdbp_object	*folder_object = NULL;
+	void			*folder_private_data;
+
+	DEBUG(4, ("exchange_emsmdb: [OXCMSG] GetMessageStatus (0x1c)\n"));
+
+	/* Sanity checks */
+	OPENCHANGE_RETVAL_IF(!emsmdbp_ctx, MAPI_E_NOT_INITIALIZED, NULL);
+	OPENCHANGE_RETVAL_IF(!mapi_req, MAPI_E_INVALID_PARAMETER, NULL);
+	OPENCHANGE_RETVAL_IF(!mapi_repl, MAPI_E_INVALID_PARAMETER, NULL);
+	OPENCHANGE_RETVAL_IF(!handles, MAPI_E_INVALID_PARAMETER, NULL);
+	OPENCHANGE_RETVAL_IF(!size, MAPI_E_INVALID_PARAMETER, NULL);
+
+	mapi_repl->opnum = mapi_req->opnum;
+	mapi_repl->error_code = MAPI_E_SUCCESS;
+	mapi_repl->handle_idx = mapi_req->handle_idx;
+
+	handle = handles[mapi_req->handle_idx];
+	retval = mapi_handles_search(emsmdbp_ctx->handles_ctx, handle, &rec);
+	if (retval) {
+		mapi_repl->error_code = ecNullObject;
+		DEBUG(5, ("[ERR][RopGetMessageStatus]: handle 0x%x not found\n", handle));
+		goto end;
+	}
+
+	retval = mapi_handles_get_private_data(rec, &folder_private_data);
+	if (retval) {
+		mapi_repl->error_code = retval;
+		DEBUG(5, ("[ERR][RopGetMessageStatus]: data associated to handle 0x%x not found\n", handle));
+		goto end;
+	}
+
+	folder_object = (struct emsmdbp_object *) folder_private_data;
+	if (!folder_object || folder_object->type != EMSMDBP_OBJECT_FOLDER) {
+		mapi_repl->error_code = ecNullObject;
+		DEBUG(5, ("[ERR][RopGetMessageStatus]: Invalid or NULL folder object\n"));
+		goto end;
+	}
+
+	switch ((int)emsmdbp_is_mapistore(folder_object)) {
+	case false:
+		DEBUG(0, ("[WARN][GetMessageStatus]: Not implemented\n"));
+		mapi_repl->error_code = ecNullObject;
+		break;
+	case true:
+		/* TODO: Retrieve the PidTagMessageStatus property from the message */
+		mapi_repl->u.mapi_GetMessageStatus.MessageStatusFlags = 0x0;
+		break;
+	}
+
+end:
+	*size += libmapiserver_RopGetMessageStatus_size(mapi_repl);
 	return MAPI_E_SUCCESS;
 }
 
@@ -1549,8 +1625,8 @@ _PUBLIC_ enum MAPISTATUS EcDoRpc_RopOpenEmbeddedMessage(TALLOC_CTX *mem_ctx,
 	case true:
 		contextID = emsmdbp_get_contextID(attachment_object);
                 if (request->OpenModeFlags == MAPI_CREATE) {
-                        retval = mapistore_indexing_get_new_folderID(emsmdbp_ctx->mstore_ctx, &messageID);
-                        if (retval) {
+                        ret = mapistore_indexing_get_new_folderID(emsmdbp_ctx->mstore_ctx, &messageID);
+                        if (ret) {
                                 mapi_repl->error_code = MAPI_E_NO_SUPPORT;
                                 goto end;
                         }
