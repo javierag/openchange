@@ -154,7 +154,7 @@ _PUBLIC_ enum MAPISTATUS emsabp_get_account_info(TALLOC_CTX *mem_ctx,
 	ret = ldb_search(emsabp_ctx->samdb_ctx, mem_ctx, &res,
 			 ldb_get_default_basedn(emsabp_ctx->samdb_ctx),
 			 LDB_SCOPE_SUBTREE, recipient_attrs, "sAMAccountName=%s",
-			 username);
+			 ldb_binary_encode_string(mem_ctx, username));
 	OPENCHANGE_RETVAL_IF((ret != LDB_SUCCESS || !res->count), MAPI_E_NOT_FOUND, NULL);
 
 	/* Check if more than one record was found */
@@ -726,7 +726,7 @@ _PUBLIC_ enum MAPISTATUS emsabp_fetch_attrs(TALLOC_CTX *mem_ctx, struct emsabp_c
 
 	/* Step 0. Try to Retrieve the dn associated to the MId first from temp TDB (users) */
 	retval = emsabp_tdb_fetch_dn_from_MId(mem_ctx, emsabp_ctx->ttdb_ctx, MId, &dn);
-	if (!MAPI_STATUS_IS_OK(retval)) {
+	if (retval != MAPI_E_SUCCESS) {
 		/* If it fails try to retrieve it from the on-disk TDB database (conf) */
 		retval = emsabp_tdb_fetch_dn_from_MId(mem_ctx, emsabp_ctx->tdb_ctx, MId, &dn);
 	}
@@ -1290,14 +1290,14 @@ _PUBLIC_ enum MAPISTATUS emsabp_search_legacyExchangeDN(struct emsabp_context *e
 	ret = ldb_search(emsabp_ctx->samdb_ctx, emsabp_ctx->mem_ctx, &res,
 			 ldb_get_config_basedn(emsabp_ctx->samdb_ctx), 
 			 LDB_SCOPE_SUBTREE, recipient_attrs, "(legacyExchangeDN=%s)",
-			 legacyDN);
+			 ldb_binary_encode_string(emsabp_ctx->mem_ctx, legacyDN));
 
 	if (ret != LDB_SUCCESS || res->count == 0) {
 		*pbUseConfPartition = false;
 		ret = ldb_search(emsabp_ctx->samdb_ctx, emsabp_ctx->mem_ctx, &res,
 				 ldb_get_default_basedn(emsabp_ctx->samdb_ctx),
 				 LDB_SCOPE_SUBTREE, recipient_attrs, "(legacyExchangeDN=%s)",
-				 legacyDN);
+				 ldb_binary_encode_string(emsabp_ctx->mem_ctx, legacyDN));
 	}
 	OPENCHANGE_RETVAL_IF(ret != LDB_SUCCESS || !res->count, MAPI_E_NOT_FOUND, NULL);
 
@@ -1345,11 +1345,11 @@ _PUBLIC_ enum MAPISTATUS emsabp_ab_fetch_filter(TALLOC_CTX *mem_ctx,
 	} else {
 		/* fetch a container we have already recorded */
 		retval = emsabp_tdb_fetch_dn_from_MId(mem_ctx, emsabp_ctx->tdb_ctx, ContainerID, &dn);
-		OPENCHANGE_RETVAL_IF(!MAPI_STATUS_IS_OK(retval), MAPI_E_INVALID_BOOKMARK, NULL);
+		OPENCHANGE_RETVAL_IF(retval != MAPI_E_SUCCESS, MAPI_E_INVALID_BOOKMARK, NULL);
 	}
 
 	retval = emsabp_search_dn(emsabp_ctx, dn, &ldb_msg);
-	OPENCHANGE_RETVAL_IF(!MAPI_STATUS_IS_OK(retval), MAPI_E_CORRUPT_STORE, NULL);
+	OPENCHANGE_RETVAL_IF(retval != MAPI_E_SUCCESS, MAPI_E_CORRUPT_STORE, NULL);
 
 	// Fetch purportedSearch
 	purportedSearch = ldb_msg_find_attr_as_string(ldb_msg, "purportedSearch", NULL);
@@ -1388,7 +1388,7 @@ _PUBLIC_ enum MAPISTATUS emsabp_ab_container_enum(TALLOC_CTX *mem_ctx,
 
 	/* Fetch AB container record */
 	retval = emsabp_ab_fetch_filter(mem_ctx, emsabp_ctx, ContainerID, &filter_search);
-	OPENCHANGE_RETVAL_IF(!MAPI_STATUS_IS_OK(retval), MAPI_E_INVALID_BOOKMARK, NULL);
+	OPENCHANGE_RETVAL_IF(retval != MAPI_E_SUCCESS, MAPI_E_INVALID_BOOKMARK, NULL);
 
 	/* Search AD with filter_search */
 

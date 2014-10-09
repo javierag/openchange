@@ -39,10 +39,12 @@ enum MYSQLRESULT select_first_string(TALLOC_CTX *, MYSQL *, const char *, const 
 enum MYSQLRESULT select_first_uint(MYSQL *conn, const char *sql, uint64_t *n);
 
 bool table_exists(MYSQL *, char *);
-bool create_schema(MYSQL *, char *);
+bool create_schema(MYSQL *, const char *);
 bool convert_string_to_ull(const char *, uint64_t *);
 
-MYSQL* create_connection(const char *, MYSQL **);
+MYSQL *create_connection(const char *, MYSQL **);
+void release_connection(MYSQL *);
+void close_all_connections(void);
 
 enum MYSQLRESULT { MYSQL_SUCCESS, MYSQL_NOT_FOUND, MYSQL_ERROR };
 
