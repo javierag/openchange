@@ -86,9 +86,16 @@ override_dh_auto_install:
 		--install-scripts=/usr/lib/openchange/web/rpcproxy --install-layout=deb $(py_setup_install_args))
 	rm -f $(DESTDIR)/usr/lib/openchange/web/rpcproxy/rpcproxy/*pyc
 	install -d $(DESTDIR)/usr/lib/python2.7/dist-packages/
+	# ocnotification
+	install -d $(DESTDIR)/etc/openchange
+	install -m 0640 debian/notification-service.cfg $(DESTDIR)/etc/openchange/notification-service.cfg
 
 override_dh_install:
 	dh_install --sourcedir=debian/tmp --list-missing # --fail-missing
+
+override_dh_installinit:
+	dh_installinit -popenchange-notification --name=ocnotification
+	dh_installinit -popenchange-ocsmanager
 
 override_dh_fixperms:
 	dh_fixperms --exclude var/cache/ntlmauthhandler
