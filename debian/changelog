@@ -1,3 +1,192 @@
+openchange (3:2.3-zentyal2) trusty; urgency=medium
+
+  [ Carlos Pérez-Aradros Herce ]
+  * [32019b] Add organization provision support
+  * [70044e] Add openchange_neworganization script
+  * [1a7cea] Fix proxyAddresses field for users provisioned with full address
+  * [663188] Add provision_neworganization script to install files
+  * [80aa2e] Fix crash-retrace.sh for paths with spaces
+
+  [ Jesús García Sáez ]
+  * [6ec0d7] multitenancy: sql schema changes
+  * [80865e] multitenancy: adapt provision to new sql schema
+  * [e8543d] fix unittest after sql schema changes
+  * [90b200] multitenancy: new test_suite clone of old one
+  * [7a8a8c] multitenancy: modified functions where we have all parameters needed
+  * [b8ee0c] refactor style of sql
+  * [e8c0f4] multitenancy: set ou_id when creating a mailbox
+  * [ba6aef] multitenancy: get_PublicFolderID/get_PublicFolderReplica
+  * [8f8473] Destroy mysql connection when context is freed
+  * [983ccf] use constant for username in unittest
+  * [afff72] multitenancy: changeNumbers functions
+  * [21adbd] multitenancy: unittest with new user
+  * [f137ad] multitenancy: EssDN as parameter to provisioning function
+  * [a24cb2] multitenancy: lower length of fields to be able to have an unique index
+  * [ac9a24] multitenancy: when provision new organization create additional server
+  * [99ebf8] multitenancy: mysql migration
+  * [c35d79] multitenancy: update openchangedb when adding a new organization
+  * [97bed4] fetch organizational unit properly
+  * [062929] select db before performing any request
+  * [04ad0b] multitenancy: refactor emsmdbp_mailbox_provision making fetch_organizational_units function public
+  * [1ed147] multitenancy: adapt fucntions searching for either org or group
+  * [12818f] multitenancy: abort organization provisioning when already exists or something went wrong
+  * [cf8d21] unnecessary rmdir on make clean
+  * [bf2576] multitenancy: X400 addresses
+  * [ec2b06] multitenancy: nspi support
+  * [d34ff8] typo keyname
+  * [0c6915] multitenancy: fixed typo legazyExchangeDN -> legacyExchangeDN
+  * [8a42dc] emsmdbp_object: sanity and error checks
+  * [10787f] nspi: fix DCESRV_NSP_RETURN macro
+  * [ba7386] npsi: sanity checks on dcesrv_NspiResolveNamesW/dcesrv_NspiResolveNames
+  * [17d031] nspi: more checks not enough memory
+  * [24175a] oxcfxics: checks around oxcfxics_check_cnset
+  * [f8c0e7] emsmdbp: sanity checks
+  * [6788b3] openchangedb: sanity checks
+  * [1a3266] openchangedb: coding style, checks and minor refactoring
+  * [2ae2e9] added openchanserver postinst script to migrate mysql database for older installations
+  * [5c6ffc] make: mapistore_test needs to link against libmapi.so
+  * [fe3770] openchangedb/indexing: change error returned
+  * [bb46b4] openchange postinst, ignore output
+  * [91a7b5] Escape ldap filters with strings properly
+  * [4789ee] openchanget postinst: return true always
+  * [083db0] remove temporaly fail missing
+  * [b361bd] add ccan source and headers under  mapiproxy/util
+  * [f13fcc] mysql: cache of connections
+  * [4d23e8] coding style in RETVAL_IF macros
+  * [95543f] coding style: use more meaningful variable name
+  * [26f8c7] testsuite: more check parse_connection_string with port
+  * [97c459] util-mysql: remove mapistore dependecy
+  * [e898f3] util-mysql: remove mapistore dependecy
+  * [63fce9] oxcfxics: fill_transfer_state_arrays return ok when no content
+  * [853416] mapitest: 1863 use username with oc account
+  * [ec336d] nspi queryrows: fix bad NumPos input
+  * [c57f4f] util/mysql: set reconnet option before real_connect
+
+  [ Samuel Cabrero ]
+  * [68afe4] Packaging for openchange notification daemon
+  * [8b0e37] Notification service implementation based on RabbitMQ
+  * [5f6489] Allow to specify the user email address as a parameter
+  * [ae210b] Add new parameter documentation
+
+  [ Enrique J. Hernández Blasco ]
+  * [70ee4c] Give support to lists as configuration value in OCSManager
+  * [c4f89b] Added new conf options to tune Autodiscover service
+  * [7b96dd] The implementation for tuning Autodiscover conf
+  * [aecf52] Added copyright note for OOF module
+  * [73178c] Fix the SIEVE script when it was enabled/disabled
+  * [fa697d] Refactor to make possible to have several backends to put the Sieve script
+  * [5dfdb1] Make it work with curl for easing the testing
+  * [b1379f] Now it is working if there is already an active script
+  * [2a5999] ManageSieve backend for Out-of-Office implemented
+  * [809a0c] Keep the user_script in settings file
+  * [52aaee] Make multitenancy work checking the samba conf key
+  * [224415] Fix getting the param properly
+  * [f350da] Fix in ManageSieve backend when there is no active script
+  * [ad117b] Include new dep for oof service
+  * [c0f717] Settings are stored in the script inline
+  * [1b6dcf] Minor changes after proper review
+  * [422929] Added wrapper to SamDB to reconnect on search exception
+  * [c29756] Choose the apport configuration based on a Package
+  * [a67b38] Added sample for apport-config.proposed
+  * [75a1ef] Fix wrong proposed conf
+  * [cb7979] Fix OOF file backend when no SIEVE scripts are there
+  * [43855a] Add free/busy permissions
+  * [505b64] lzfu: Do not add \0 twice at the end of RTF uncompressing
+  * [2f73bd] 4.0 is the new proposed version
+  * [9841ff] Give support to update a stacktrace by retracing
+
+  [ Julien Kerihuel ]
+  * [4bb608] Fix GetMessageStatus response IDL
+  * [17abff] Add stub server implementation for GetMessageStatus
+  * [a3dbf2] Add small script to dump last network packet from gdb
+  * [86dc40] Fix from Chenglin Zhong: mapistore_message_modify_recipients is improperly invoked
+  * [a6fa3b] Add a script to wipe *every* openchangedb entries for a given user. Helpful when you want to start over with the same user and have a clean and fresh mailbox
+  * [e1dbd7] Check for tainted username Exit if openchangedb mysql uri is not set
+  * [cc63b3] Fix ReadStream failure operation when BufferSize is set to 0xBABE in the request and MaximumByteCount value (uint32_t) overflows sizeof (uint16_t)
+  * [12b295] Prevent RAWIDSET_push_guid_glob from crashing when last_glob_idset remains uninitialized after initial call to RAWIDSET_find_by_GUID.
+  * [93e4a1] Add -Wpointer-sign to CFLAGS to ensure we don't get confused between uint64_t and int64_t.
+  * [49b996] Initialize ret and prevent from returning uninitialized pointer leading to crash
+
+  [ Jelmer Vernooij ]
+  * [038248] Add missing cleanup for some po files.
+
+  [ Kamen Mazdrashki ]
+  * [e45e69] build: remove artifacts from libmapiproxy/backend build in make clean
+  * [dfc21b] testsutie: Add testsuite for mapiproxy/util/mysql
+  * [ed05de] mapiproxy/mysql: Reractor parse_connection_string() to be more stable
+  * [06c7d2] mapiproxy/mysql: Call mysql_options() after connection is established
+  * [0d7b3a] testsuite: Make compiler happy and initialize local variable before it's used
+  * [3cdd8c] testsuite: Small README how to use unit test utility
+  * [59fc34] testsuite: Don't use ck_assert_ptr_eq() - travis can't handle this yet
+  * [7462c7] testsutie: Handle command line options for openchange-testsuite tool
+  * [cd6949] openchangedb/mysql: Avoid leaking talloc context in case of failure
+  * [ec6699] openchangedb/mysql: Avoid mem leaks in message_set_properties
+  * [953672] testsuite: Initialize g_mem_ctx during test case setup
+  * [7fd318] indexing/mysql: Fix memory leak in mysql_record_allocate_fmids()
+  * [bd5418] testsuite/indexing: Remove not needed memory context which end up leaked after all
+  * [c151d9] namedprops/mysql: Fix memory leak in next_unused_id()
+  * [c95014] namedprops/ldb: Use talloc_new() to allocate local context
+  * [788f08] testsuite/namedprops/ldb: Fix the test suite not to bleed memory
+  * [5f1466] test/openchangedb: use talloc_new() - much easier to track down memory leaks
+  * [90852b] test/namedprops: Use talloc_new() for local memory contexts
+  * [08f08a] testsuite: Update README.md with leak report info
+  * [c11f7f] testsuite: Allocate global memory context under autofree context
+  * [08b6b2] test/namedprops: Don't use lpcfg_load_defaul() directly
+  * [f1f626] Introduce mapistore_tool to be able fetch mapistore(SOGo) info directly
+  * [4881a9] build: Always use CFLAGS after PYTHON_CFLAG so we can override from command line
+  * [00e53f] dmsmdbp_object: emsmdbp_folder_get_folder_count() to return MAPISTATUS
+  * [19da6e] oxctabl: Remove unnecessary initialization - row blow is already initalized
+  * [46001b] emsmdbp_object: Check both PR_DISPLAY_NAME_UNICODE and PR_DISPLAY_NAME for folder Display Name
+  * [bf4366] emsmdbp: Fix PidTagSourceKey creation for a message - messageID should be used
+  * [138e89] emsmdb: Remove folderID field from emsmdbp_object_message - not used anywhere
+  * [1fe837] provosition/mailbox: Don't lowercase Organization and OU names for Free/Busy provision
+  * [5a4c40] openchangedb: get_parent_if() should return error when input fid is not found
+  * [b35ac8] build/mapistore tools: Remove dependency in build line for libmapi.so
+  * [e76736] packaging: Disable gcc optimizations and enable debug info
+  * [8d10e2] test/util/mysql: Print out MySQL error when mysql_real_connect() fails
+  * [3f361c] test/common: Allow for MySQL password to be passed in environment
+  * [130c59] util/mysql: Avoid leaking MYSQL object in case of failure
+  * [def0a8] testsuite: Update README - remove memory leaks already fixed
+  * [388b4b] util/mysql: Print MySQL specific error also in case of mysql_query() failure
+  * [8b7a83] indexing: Fallback to default_indexing_url in case we have no indexing_url stored for the user
+  * [05d54b] openchangedb/indexing: Handle indexing url validation in openchangedb layer
+  * [5b3a52] oxcstor/RopLogon: Explicitly check for MAPISTATUS code
+  * [9bf46d] oxcstor/RopLogon: Verify EssDN for public logons
+  * [2253ff] emsmdbp/mailbox_init: Alwasy popoulate mailbox_object object
+  * [d700cc] oxcmsg: Implementation for partial UserDNs in ModifyRecipients call
+  * [6bd4e0] oxcmsg: Resolve x500dn back to sAMAccountName due to SOGo limitations atm
+  * [bf9023] emsmdbp/table_get_row_props: Check for OOM
+  * [50d3cf] emsmdbp/table_get_row_props: test retvals as mapistore_error value
+  * [1dbebf] oxcfxics: Prototype oxcfxics_fill_transfer_state_arrays() to return status code
+  * [a3f84d] oxcfxics: Check for errors in oxcfxics_fill_transfer_state_arrays() and handle accordingly
+  * [b0fe9f] emsmdbp_object: Return MAPISTATUS and check for distinct error types
+  * [82f64a] emsmdbp_object: emsmdbp_object_open_folder_by_fid() to return MAPISTATUS
+  * [42caf1] oxcfxics: Check for table_set_columns() errors in oxcfxics_push_messageChange_attachments
+  * [4c2f0c] oxcfxics/SyncImportHierarchyChange: Fix MAPISTATUS error handling
+  * [bdd597] oxcfxics/SyncImportMessageMove: Handle MAPISTATUS error and print out the error
+  * [48f253] provisioning: Print out more descriptive failure when LocalFree busy create fails
+  * [934c1c] oxcstor/Logon_Mailbox: OPENCHANGE_RETVAL_IF() expect bool as a flag - fix that
+  * [c3b7b5] oxcfxics: Fix memory context allocation check
+  * [5edf1e] oxomsg/handle_message_relocation: Use MAPISTATUS to check for errors instead of mapistore_error
+  * [53c0da] oxcfxics: Relax error checking a bit to restore previous behavior
+  * [fb590d] provisioning: Get back to print function name and fix double __LINE__ printing
+  * [6b7e02] oxcfxics: Fix log message typo
+  * [d1647a] mgmt_messages: Fix wron error type - mapistore_error is expected
+  * [8a25fb] mapicode: Fallback to code without MAPI_STATUS_IS_ERR() macro usage
+  * [1effae] mapicode: Comment out MAPI_STATUS_IS_ERR - not to be used anymore
+  * [acd062] mapicode: Replace usages of MAPI_STATUS_IS_OK() with direct check
+  * [c1e44f] libmapi: Check NTSTATUS status directly rather than map it to MAPISTATUS
+  * [302b34] mapicode: Comment out MAPI_STATUS_IS_OK - not used anymore
+
+  [ Javier Amor García ]
+  * [3ca10c] Make ocsmanager configuration query for firstorg and firstou instead of using hardcoded values
+  * [a8beed] styles fixes as blaxte suggestions
+  * [eb080b] Added oab functionality to ocsmanger. For now it returns a empty address book
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Mon, 27 Oct 2014 11:45:21 +0100
+
 openchange (3:2.3-zentyal1) trusty; urgency=medium
 
   [ Javier Amor García ]
