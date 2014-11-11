@@ -1,3 +1,30 @@
+openchange (3:2.3-zentyal3) trusty; urgency=medium
+
+  [ Enrique J. Hernández Blasco ]
+  * [fdb285] Move 4.0 to stable
+  * [23dee1] Do not try backup apport configuration when running with gdb
+  * [3a1f66] Adding more info to duplicates
+  * [70c4f1] Give support to reopen an issue if it is closed when adding a duplicate
+  * [09f71f] Set prev when splitting a range on deletion
+
+  [ Kamen Mazdrashki ]
+  * [516d88] openchangedb: Impelement Logger module
+  * [92cb8f] openchangedb: Load openchangedb_logger module based on config option
+  * [f6223f] test: Fix OpenchangeDB logger test to reset stats on every test
+  * [2b751e] test: Add 'debuglevel' and 'option' command line options
+  * [f1d4ef] test: Avoid ck_assert_int_xx() macro side effect in older 'check' versions
+
+  [ Julien Kerihuel ]
+  * [8eb0f2] Reset table cursor to the beginning of the table across Restrict calls as stated in [MS-OXCTABL] 3.2.5.4 Processing RopRestrict: "When this ROP is sent, the server MUST invalidate all current bookmarks (2) of the table and MUST move the cursor position to the beginning of the table."
+
+  [ Jesús García Sáez ]
+  * [d181e6] openchangedb: transactions on create_folder and set_folder_properties
+  * [cc494b] openchangedb: ignore ChangeNumber property when setting folder properties
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Tue, 11 Nov 2014 12:35:34 +0100
+
 openchange (3:2.3-zentyal2) trusty; urgency=medium
 
   [ Carlos Pérez-Aradros Herce ]
