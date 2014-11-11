@@ -125,12 +125,14 @@ def guess_names_from_smbconf(lp, creds=None, firstorg=None, firstou=None):
     # Note: "server role" can have many forms, even for the same function:
     # "member server", "domain controller", "active directory domain
     # controller"...
+    print "serverrole=" + serverrole
     if "domain controller" in serverrole or serverrole == "member server":
         domain = lp.get("workgroup")
         domaindn = "DC=" + dnsdomain.replace(".", ",DC=")
     else:
         domain = netbiosname
         domaindn = "CN=" + netbiosname
+    print "XXX domaindn=" + domaindn
 
     rootdn = domaindn
     configdn = "CN=Configuration," + rootdn
@@ -149,8 +151,9 @@ def guess_names_from_smbconf(lp, creds=None, firstorg=None, firstou=None):
     names.hostname = hostname
     names.sitename = sitename
 
-    db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
-             credentials=creds, lp=lp)
+    db = get_schema_master_samdb(names, lp, creds)
+    # db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
+    #          credentials=creds, lp=lp)
     exchangedn = 'CN=Microsoft Exchange,CN=Services,%s' % configdn
     if not firstorg:
         firstorg = db.searchone(
@@ -344,8 +347,6 @@ def install_schemas(setup_path, names, lp, creds, reporter):
     :param creds: Credentials Context
     :param reporter: A progress reporter instance (subclass of AbstractProgressReporter)
     """
-    session_info = system_session()
-
     lp.set("dsdb:schema update allowed", "yes")
 
     sam_db = get_schema_master_samdb(names, lp, creds)
@@ -506,8 +507,9 @@ def newuser(names, lp, creds, username=None):
     :param username: Name of user to extend
     """
 
-    db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
-             credentials=creds, lp=lp)
+    # db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
+    #          credentials=creds, lp=lp)
+    db = get_schema_master_samdb(names, lp, creds)
     user_dn = get_user_dn(db, "CN=Users,%s" % names.domaindn, username)
     if user_dn:
         smtp_user = username
