@@ -19,6 +19,7 @@
 from base64 import b64encode
 import os
 import re
+import sys
 from openchange import mailbox
 from samba import Ldb, dsdb
 from samba.samdb import SamDB
@@ -354,7 +355,7 @@ def install_schemas(setup_path, names, lp, creds, reporter):
         schema_ldif = ""
         prefixmap_data = ""
         for ent in current:
-            schema_ldif += samdb.write_ldif(ent, ldb.CHANGETYPE_NONE)
+            schema_ldif += sam_db.write_ldif(ent, ldb.CHANGETYPE_NONE)
 
             prefixmap_data = open(setup_path("AD/prefixMap.txt"), 'r').read()
             prefixmap_data = b64encode(prefixmap_data)
@@ -685,14 +686,7 @@ def deprovision(setup_path, names, lp, creds, reporter=None):
     if reporter is None:
         reporter = TextProgressReporter()
 
-    session_info = system_session()
-
     lp.set("dsdb:schema update allowed", "yes")
-
-    # XXX unnecesary sambdb ?
-    samdb = SamDB(url=get_ldb_url(lp, creds, names), session_info=session_info,
-                  credentials=creds, lp=lp)
-
     try:
         # This is the unique server, remove full schema
         deprovision_schema(setup_path, names, lp, creds, reporter, "AD/oc_provision_configuration.ldif", "Remove Exchange configuration objects")
