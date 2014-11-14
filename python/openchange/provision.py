@@ -151,9 +151,8 @@ def guess_names_from_smbconf(lp, creds=None, firstorg=None, firstou=None):
     names.hostname = hostname
     names.sitename = sitename
 
-    db = get_schema_master_samdb(names, lp, creds)
-    # db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
-    #          credentials=creds, lp=lp)
+    db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
+              credentials=creds, lp=lp)
     exchangedn = 'CN=Microsoft Exchange,CN=Services,%s' % configdn
     if not firstorg:
         firstorg = db.searchone(
@@ -211,6 +210,9 @@ def provision_schema(sam_db, setup_path, names, reporter, ldif, msg, modify_mode
             "NETBIOSNAME": names.netbiosname,
             "HOSTNAME": names.hostname
         }
+        if not provision_schema.printedlp: # DDD
+            pp.pprint(ldif_params)
+            provision_schema.printedlp = True
         ldif_function(sam_db, setup_path(ldif), ldif_params)
         setup_modify_ldif(sam_db, setup_path("AD/oc_provision_schema_update.ldif"), ldif_params)
     except:
@@ -219,6 +221,7 @@ def provision_schema(sam_db, setup_path, names, reporter, ldif, msg, modify_mode
 
     sam_db.transaction_commit()
 
+provision_schema.printedlp = False # DDD
 
 def modify_schema(sam_db, setup_path, names, reporter, ldif, msg):
     """Modify schema using LDIF specified file
@@ -508,10 +511,8 @@ def newuser(names, lp, creds, username=None, mail=None):
     :param mail: The user email address. If not specified, it will be set
                  to <samAccountName>@<dnsdomain>
     """
-
-    # db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
-    #          credentials=creds, lp=lp)
-    db = get_schema_master_samdb(names, lp, creds)
+    db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
+              credentials=creds, lp=lp)
     user_dn = get_user_dn(db, "CN=Users,%s" % names.domaindn, username)
     if user_dn:
         if mail:
