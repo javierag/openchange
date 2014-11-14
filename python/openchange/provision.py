@@ -35,10 +35,6 @@ __docformat__ = 'restructuredText'
 
 DEFAULTSITE = "Default-First-Site-Name"
 
-import pprint; # DDD
-pp = pprint.PrettyPrinter(indent=4)   # DDD
-
-
 class NotProvisionedError(Exception):
     """Raised when an action expects the server to be provisioned and it's not."""
 
@@ -125,14 +121,12 @@ def guess_names_from_smbconf(lp, creds=None, firstorg=None, firstou=None):
     # Note: "server role" can have many forms, even for the same function:
     # "member server", "domain controller", "active directory domain
     # controller"...
-    print "serverrole=" + serverrole
     if "domain controller" in serverrole or serverrole == "member server":
         domain = lp.get("workgroup")
         domaindn = "DC=" + dnsdomain.replace(".", ",DC=")
     else:
         domain = netbiosname
         domaindn = "CN=" + netbiosname
-    print "XXX domaindn=" + domaindn
 
     rootdn = domaindn
     configdn = "CN=Configuration," + rootdn
@@ -180,9 +174,9 @@ def guess_names_from_smbconf(lp, creds=None, firstorg=None, firstou=None):
 
     return names
 
-# XXX changed ldb_url
 def provision_schema(sam_db, setup_path, names, reporter, ldif, msg, modify_mode=False):
     """Provision/modify schema using LDIF specified file
+    :param sam_db: sam db where to provision the schema
     :param setup_path: Path to the setup directory.
     :param names: provision names object.
     :param reporter: A progress reporter instance (subclass of AbstractProgressReporter)
@@ -210,9 +204,6 @@ def provision_schema(sam_db, setup_path, names, reporter, ldif, msg, modify_mode
             "NETBIOSNAME": names.netbiosname,
             "HOSTNAME": names.hostname
         }
-        if not provision_schema.printedlp: # DDD
-            pp.pprint(ldif_params)
-            provision_schema.printedlp = True
         ldif_function(sam_db, setup_path(ldif), ldif_params)
         setup_modify_ldif(sam_db, setup_path("AD/oc_provision_schema_update.ldif"), ldif_params)
     except:
@@ -221,14 +212,11 @@ def provision_schema(sam_db, setup_path, names, reporter, ldif, msg, modify_mode
 
     sam_db.transaction_commit()
 
-provision_schema.printedlp = False # DDD
-
 def modify_schema(sam_db, setup_path, names, reporter, ldif, msg):
     """Modify schema using LDIF specified file
+    :param sam_db: sam db where to provision the schema
     :param setup_path: Path to the setup directory.
     :param names: provision names object.
-    :param lp: Loadparm context
-    :param creds: Credentials Context
     :param reporter: A progress reporter instance (subclass of AbstractProgressReporter)
     :param ldif: path to the LDIF file
     :param msg: reporter message
@@ -355,7 +343,6 @@ def install_schemas(setup_path, names, lp, creds, reporter):
     sam_db = get_schema_master_samdb(names, lp, creds)
 
     # Step 1. Extending the prefixmap attribute of the schema DN record
-
   
     reporter.reportNextStep("Register Exchange OIDs")
 
@@ -404,9 +391,6 @@ def install_schemas(setup_path, names, lp, creds, reporter):
     except LdbError, ldb_error:
         print ("[!] error while provisioning the Exchange configuration"
                " objects (%d): %s" % ldb_error.args)
-    print 'XXXX END install_schemas'
-
-
 
 def provision_organization(setup_path, names, lp, creds, reporter=None):
     """Create exchange organization
@@ -442,25 +426,17 @@ def get_ldb_url(lp, creds, names):
         dc = net.finddc(domain=names.dnsdomain, flags=nbt.NBT_SERVER_LDAP)
         url = "ldap://" + dc.pdc_dns_name
     else:
-        
         url = lp.samdb_url()
 
     return url
 
 def get_user_dn(ldb, basedn, username):
-    import pprint;
-    pp = pprint.PrettyPrinter(indent=4)    
-
     if not isinstance(ldb, Ldb):
         raise TypeError("'ldb' argument must be an Ldb intance")
 
     ldb_filter = "(&(objectClass=user)(sAMAccountName=%s))" % username
     res = ldb.search(base=basedn, scope=SCOPE_SUBTREE, expression=ldb_filter, attrs=["*"])
     user_dn = None
-    print 'Base DN =' + basedn
-    print 'filter=' + ldb_filter
-    print 'Res'
-    pp.pprint(res)
     if len(res) == 1:
         user_dn = res[0].dn.get_linearized()
 
@@ -469,27 +445,22 @@ def get_user_dn(ldb, basedn, username):
 def get_schema_master(db):
     res = db.search(base="", scope=ldb.SCOPE_BASE, attrs=["schemaNamingContext"])
     schemaNamingContext = res[0]["schemaNamingContext"][0]
-    print 'FROM DSE schemeNamingContext=' + schemaNamingContext
     res = db.search(base=schemaNamingContext, scope=ldb.SCOPE_BASE, attrs=["fSMORoleOwner"])
     #check that only  one entry
     owner = res[0]['fSMORoleOwner'][0]
-    print "FSMORo=" + owner
 
     # remove prefix, to get the server owner
     server_owner = owner.split(',', 1)[1]
-    print 'server_owner=' + server_owner
 
     return server_owner
 
 def get_dns_owner(db, ntds_owner):
     res =  db.search(base=ntds_owner, scope=ldb.SCOPE_BASE, attrs=["dnsHostname"])
     dns_hostname = res[0]['dnsHostname'][0]
-    print 'dns_hostname=' + dns_hostname
     return dns_hostname
 
 def get_schema_master_samdb(names, lp, creds):
     samdb_url=get_ldb_url(lp, creds, names)
-    print "SAMDB_URL=" + samdb_url # DDD
     session_info = system_session()
     db = SamDB(samdb_url, session_info=session_info,
                   credentials=creds, lp=lp)
@@ -512,7 +483,7 @@ def newuser(names, lp, creds, username=None, mail=None):
                  to <samAccountName>@<dnsdomain>
     """
     db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
-              credentials=creds, lp=lp)
+             credentials=creds, lp=lp)
     user_dn = get_user_dn(db, "CN=Users,%s" % names.domaindn, username)
     if user_dn:
         if mail:
@@ -586,9 +557,6 @@ def accountcontrol(names, lp, creds, username=None, value=0):
     :param username: Name of user to disable
     :param value: the control value
     """
-    import pprint;
-    pp = pprint.PrettyPrinter(indent=4)    
-
     db = Ldb(url=get_ldb_url(lp, creds, names), session_info=system_session(),
              credentials=creds, lp=lp)
     user_dn = get_user_dn(db, "CN=Users,%s" % names.domaindn, username)
@@ -598,7 +566,6 @@ changetype: modify
 replace: msExchUserAccountControl
 msExchUserAccountControl: %d
 """ % (user_dn, value)
-    pp.pprint(extended_user)
     db.modify_ldif(extended_user)
     if value == 2:
         print "[+] Account %s disabled" % username
@@ -703,8 +670,6 @@ def provision(setup_path, names, lp, creds, reporter=None):
 
     print "[SUCCESS] Done!"
 
-
-
 def deprovision(setup_path, names, lp, creds, reporter=None):
     """Remove all configuration entries added by the OpenChange
     installation.
@@ -717,7 +682,6 @@ def deprovision(setup_path, names, lp, creds, reporter=None):
 
     It is assumed that checkusage has been used before to assure that the server is ready for deprovision
     """
-
     if reporter is None:
         reporter = TextProgressReporter()
 
