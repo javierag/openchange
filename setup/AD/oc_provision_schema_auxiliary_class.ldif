@@ -112,6 +112,7 @@ objectCategory: CN=Class-Schema,${SCHEMADN}
 defaultObjectCategory: CN=ms-Exch-Custom-Attributes,${SCHEMADN}
 
 
+
 #
 # ms-Exch-IM-Recipient	
 # The auxiliary class for all objects that will be enabled for Instant
@@ -141,7 +142,6 @@ systemOnly: FALSE
 defaultHidingValue: TRUE
 objectCategory: CN=Class-Schema,${SCHEMADN}
 defaultObjectCategory: CN=ms-Exch-IM-Recipient,${SCHEMADN}
-
 
 #
 # ms-Exch-Mail-Storage 	
