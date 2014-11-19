@@ -28,6 +28,7 @@ from flask import (Flask,
                    send_from_directory)
 from flask.ctx import after_this_request
 from handler.kissHandler import ApiHandler
+from openchange import mapistore
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -57,16 +58,19 @@ def module_info():
         # fix contexts, they are relative atm
         return {
             'url': '/folders/%s/' % folder['id'],
-            'roles': 'root',
+            'role': folder['role'],
             'name': folder['PidTagDisplayName'],
-            'main_folder': True
+            'main_folder': True,
+            'system_idx': folder['system_idx']
         }
     contexts = [_contexts_info(ctx) for ctx in ret_val['contexts']]
-    contexts.append({'url': '/calendar/',
-                     'roles': 'calendar',
-                     'name': 'Calendar',
-                     'main_folder': True})
-    # todo: add 'calendar' etc
+    contexts.append({
+        'url': '/folders/',
+        'role': mapistore.ROLE_FALLBACK,
+        'name': 'Fallback',
+        'main_folder': True,
+        'sytem_idx': str(-1)
+    })
     ret_val['contexts'] = contexts
     handler.close_context()
     return jsonify(ret_val)
@@ -100,8 +104,8 @@ def module_folders_head_folders(folder_id):
         handler.close_context()
 
     @after_this_request
-    def add_header_X_Mapistore_Rowcount(response):
-        response.headers['X-Mapistore-Rowcount'] = ret_val['item_count']
+    def add_header_X_mapistore_rowcount(response):
+        response.headers['X-mapistore-rowcount'] = ret_val['item_count']
         return response
 
     return jsonify()
@@ -109,7 +113,7 @@ def module_folders_head_folders(folder_id):
 
 @app.route('/folders/', methods=['GET'])
 @app.route('/folders/<int:folder_id>/folders', methods=['GET'])
-def module_folders_get_folders(folder_id=0):
+def module_folders_get_folders(folder_id=1):
     """List root level folders"""
     properties = request.args.get('properties')
     if properties is None:
@@ -212,8 +216,8 @@ def module_folders_head_messages(folder_id):
         handler.close_context()
 
     @after_this_request
-    def add_header_X_Mapistore_Rowcount(response):
-        response.headers['X-Mapistore-Rowcount'] = len(messages)
+    def add_header_X_mapistore_rowcount(response):
+        response.headers['X-mapistore-rowcount'] = len(messages)
         return response
 
     return jsonify()
@@ -247,7 +251,7 @@ def module_folders_get_messages(folder_id):
 # common message implementation
 ###############################################################################
 
-def _messsage_create(handler, type, data):
+def _message_create(handler, collection, data):
     msg = {}
     try:
         if data is None:
@@ -258,7 +262,7 @@ def _messsage_create(handler, type, data):
         subject = data.get('PidTagSubject')
         if subject is None:
             abort(422, "PidTagSubject is a required parameter")
-        msg = handler.messages_create(type, data)
+        msg = handler.messages_create(collection, data)
     except KeyError, ke:
         abort(404, ke.message)
     return msg
@@ -268,18 +272,18 @@ def _messsage_create(handler, type, data):
 # Mail service
 ###############################################################################
 
-@app.route('/mail/', methods=['POST'])
+@app.route('/mails/', methods=['POST'])
 def module_mail_create():
     data = request.get_json()
     handler = ApiHandler(user_id='any')
     try:
-        msg = _messsage_create(handler, 'mail', data)
+        msg = _message_create(handler, 'mails', data)
     finally:
         handler.close_context()
     return jsonify(id=msg['id'])
 
 
-@app.route('/mail/<int:msg_id>/', methods=['GET'])
+@app.route('/mails/<int:msg_id>/', methods=['GET'])
 @app.route('/calendars/<int:msg_id>/', methods=['GET'])
 @app.route('/tasks/<int:msg_id>/', methods=['GET'])
 @app.route('/contacts/<int:msg_id>/', methods=['GET'])
@@ -297,7 +301,7 @@ def module_mail_get(msg_id=0):
     return jsonify(ret_val)
 
 
-@app.route('/mail/<int:msg_id>/', methods=['PUT'])
+@app.route('/mails/<int:msg_id>/', methods=['PUT'])
 @app.route('/calendars/<int:msg_id>/', methods=['PUT'])
 @app.route('/tasks/<int:msg_id>/', methods=['PUT'])
 @app.route('/contacts/<int:msg_id>/', methods=['PUT'])
@@ -315,7 +319,7 @@ def module_mail_put(msg_id):
     return "", 201
 
 
-@app.route('/mail/<int:msg_id>/', methods=['DELETE'])
+@app.route('/mails/<int:msg_id>/', methods=['DELETE'])
 @app.route('/calendars/<int:msg_id>/', methods=['DELETE'])
 @app.route('/tasks/<int:msg_id>/', methods=['DELETE'])
 @app.route('/contacts/<int:msg_id>/', methods=['DELETE'])
@@ -341,7 +345,7 @@ def module_calendars_create():
     data = request.get_json()
     handler = ApiHandler(user_id='any')
     try:
-        msg = _messsage_create(handler, 'calendar', data)
+        msg = _message_create(handler, 'calendars', data)
     finally:
         handler.close_context()
     return jsonify(id=msg['id'])
@@ -356,7 +360,7 @@ def module_tasks_create():
     data = request.get_json()
     handler = ApiHandler(user_id='any')
     try:
-        msg = _messsage_create(handler, 'task', data)
+        msg = _message_create(handler, 'tasks', data)
     finally:
         handler.close_context()
     return jsonify(id=msg['id'])
@@ -366,12 +370,14 @@ def module_tasks_create():
 # Contacts service
 ###############################################################################
 
+import pprint
+
 @app.route('/contacts/', methods=['POST'])
 def module_contacts_create():
     data = request.get_json()
     handler = ApiHandler(user_id='any')
     try:
-        msg = _messsage_create(handler, 'contact', data)
+        msg = _message_create(handler, 'contacts', data)
     finally:
         handler.close_context()
     return jsonify(id=msg['id'])
@@ -386,7 +392,7 @@ def module_notes_create():
     data = request.get_json()
     handler = ApiHandler(user_id='any')
     try:
-        msg = _messsage_create(handler, 'note', data)
+        msg = _message_create(handler, 'notes', data)
     finally:
         handler.close_context()
     return jsonify(id=msg['id'])

@@ -45,7 +45,10 @@ class ApiHandler(object):
         """get static description for this handler implementation"""
         # build main folders list
         folders = self._db.get_folders()
-        contexts = [folders[i] for i in folders if i < 100]
+        contexts = []
+        for i in folders:
+            if i < 100 and folders[i]['parent_id'] == 1:
+                contexts.append(folders[i])
         return {
             'name': ApiHandler.NAME,
             'version': ApiHandler.VERSION,
@@ -64,13 +67,13 @@ class ApiHandler(object):
         folder_obj = fold_dict[folder_id]
         return self._folder_rec(folder_obj, fold_dict)
 
-    def folders_dir(self, parent_folder_id=0):
+    def folders_dir(self, parent_folder_id=1):
         """List child folders for a given folder ID
         :param int parent_folder_id: Folder to enumerate
         :return list: List of folder records
         """
         fold_dict = self._db.get_folders()
-        if parent_folder_id != 0 and not (parent_folder_id in fold_dict):
+        if parent_folder_id != 1 and not (parent_folder_id in fold_dict):
             raise KeyError('No folder with id = %d' % parent_folder_id)
 
         return [self._folder_rec(f, fold_dict)
@@ -115,18 +118,18 @@ class ApiHandler(object):
         msg_dict = self._db.get_messages()
         return [msg for msg in msg_dict.values() if folder_id == msg['parent_id']]
 
-    def messages_create(self, type, props):
+    def messages_create(self, collection, props):
         # we rely on API server to check preconditions
         # but anyway, assert here too
         assert 'parent_id' in props, 'parent_id is required'
         assert 'PidTagSubject' in props, 'PidTagSubject is required'
         # override folder type
-        props['type'] = type
+        props['collection'] = collection
         # check parent ID
         parent_id = props['parent_id']
         if not self.folders_id_exists(parent_id):
             raise KeyError('No folder with id = %d' % parent_id)
-        # crate new folder
+        # create new message
         return self._db.create_message(props)
 
     def messages_get(self, msg_id):

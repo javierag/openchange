@@ -423,7 +423,7 @@ enum mapistore_error mapistore_backend_create_root_folder(const char *username, 
 	int				i;
 
 	for (i = 0; retval == MAPISTORE_ERR_NOT_FOUND && i < num_backends; i++) {
-		retval = backends[i].backend->backend.create_root_folder(username, ctx_role, fid, name, mem_ctx, mapistore_urip);
+		retval = backends[i].backend->backend.create_root_folder(mem_ctx, backends[i].backend->backend.name, username, ctx_role, fid, name, mapistore_urip);
 	}
 
 	return retval;
@@ -499,6 +499,9 @@ _PUBLIC_ struct backend_context *mapistore_backend_lookup(struct backend_context
    \param backend_list_ctx pointer to the backend context list
    \param uri the uri string to search
 
+   \note Longest-match URI lookup is performed to workaround. We try
+   to find the closest match
+
    \return Pointer to the mapistore_backend context on success,
    otherwise NULL
  */
@@ -506,19 +509,24 @@ _PUBLIC_ struct backend_context *mapistore_backend_lookup_by_uri(struct backend_
 								 const char *uri)
 {
 	struct backend_context_list	*el;
+	struct backend_context		*rec = NULL;
+	uint32_t			rec_len = 0;
 
 	/* sanity checks */
 	if (!backend_list_ctx) return NULL;
 	if (!uri) return NULL;
 
 	for (el = backend_list_ctx; el; el = el->next) {
-		if (el->ctx && el->ctx->uri &&
-		    !strcmp(el->ctx->uri, uri)) {
-			return el->ctx;
+		if (el->ctx && el->ctx->uri && !strncmp(el->ctx->uri, uri, strlen(uri))) {
+			/* Find the closest match */
+			if ((rec_len == 0) || (strlen(el->ctx->uri) < rec_len)) {
+				rec = el->ctx;
+				rec_len = strlen(el->ctx->uri);
+			}
 		}
 	}
 	
-	return NULL;
+	return rec;
 }
 
 /**
@@ -668,6 +676,9 @@ enum mapistore_error mapistore_backend_folder_get_child_fid_by_name(struct backe
 
 	talloc_free(mem_ctx);
 
+	/* FIXME: temporary hack */
+	return MAPISTORE_ERROR;
+
 	return ret;
 }
 
@@ -720,12 +731,27 @@ enum mapistore_error mapistore_backend_message_open_attachment(struct backend_co
 
 enum mapistore_error mapistore_backend_message_create_attachment(struct backend_context *bctx, void *message, TALLOC_CTX *mem_ctx, void **attachment, uint32_t *aid)
 {
-        return bctx->backend->message.create_attachment(message, mem_ctx, attachment, aid);
+        return bctx->backend->message.create_attachment(mem_ctx, message, attachment, aid);
+}
+
+enum mapistore_error mapistore_backend_message_delete_attachment(struct backend_context *bctx, void *message, uint32_t aid)
+{
+	return bctx->backend->message.delete_attachment(message, aid);
 }
 
 enum mapistore_error mapistore_backend_message_get_attachment_table(struct backend_context *bctx, void *message, TALLOC_CTX *mem_ctx, void **table, uint32_t *row_count)
 {
 	return bctx->backend->message.get_attachment_table(mem_ctx, message, table, row_count);
+}
+
+enum mapistore_error mapistore_backend_message_get_attachment_ids(struct backend_context *bctx, void *message, TALLOC_CTX *mem_ctx, uint32_t **attach_ids, uint16_t *count)
+{
+	return bctx->backend->message.get_attachment_ids(mem_ctx, message, attach_ids, count);
+}
+
+enum mapistore_error mapistore_backend_message_attachment_save(struct backend_context *bctx, void *attachment, TALLOC_CTX *mem_ctx)
+{
+	return bctx->backend->message.save_attachment(mem_ctx, attachment);
 }
 
 enum mapistore_error mapistore_backend_message_attachment_open_embedded_message(struct backend_context *bctx, void *attachment, TALLOC_CTX *mem_ctx, void **embedded_message, uint64_t *mid, struct mapistore_message **msg)
@@ -777,7 +803,7 @@ enum mapistore_error mapistore_backend_table_handle_destructor(struct backend_co
 
 enum mapistore_error mapistore_backend_properties_get_available_properties(struct backend_context *bctx, void *object, TALLOC_CTX *mem_ctx, struct SPropTagArray **propertiesp)
 {
-        return bctx->backend->properties.get_available_properties(object, mem_ctx, propertiesp);
+	return bctx->backend->properties.get_available_properties(mem_ctx, object, propertiesp);
 }
 
 enum mapistore_error mapistore_backend_properties_get_properties(struct backend_context *bctx,

@@ -98,6 +98,23 @@ typedef struct {
 } PyMAPIStoreMessagesObject;
 
 typedef struct {
+	PyObject_HEAD
+	TALLOC_CTX			*mem_ctx;
+	PyMAPIStoreContextObject	*context;
+	PyMAPIStoreFolderObject		*attachment_object;
+	uint32_t			aid;
+} PyMAPIStoreAttachmentObject;
+
+typedef struct {
+	PyObject_HEAD
+	TALLOC_CTX			*mem_ctx;
+	PyMAPIStoreMessageObject	*message;
+	size_t				curr_index;
+	size_t				count;
+	uint32_t			*aids;
+} PyMAPIStoreAttachmentsObject;
+
+typedef struct {
 	PyObject_HEAD	
 
 	PyObject *timestamp;
@@ -115,7 +132,19 @@ typedef struct {
 
 typedef struct {
 	PyObject_HEAD	
+	TALLOC_CTX			*mem_ctx;
+	PyMAPIStoreContextObject	*context;
+	struct SPropTagArray		*columns;
+	void				*table_object;
 } PyMAPIStoreTableObject;
+
+typedef struct {
+	PyObject_HEAD
+	TALLOC_CTX			*mem_ctx;
+	PyMAPIStoreTableObject		*table;
+	size_t				curr_index;
+	size_t				count;
+} PyMAPIStoreRowsObject;
 
 typedef struct {
 	PyObject_HEAD
@@ -132,7 +161,10 @@ PyAPI_DATA(PyTypeObject)	PyMAPIStoreFolder;
 PyAPI_DATA(PyTypeObject)	PyMAPIStoreFolders;
 PyAPI_DATA(PyTypeObject)	PyMAPIStoreMessage;
 PyAPI_DATA(PyTypeObject)	PyMAPIStoreMessages;
+PyAPI_DATA(PyTypeObject)	PyMAPIStoreAttachment;
+PyAPI_DATA(PyTypeObject)	PyMAPIStoreAttachments;
 PyAPI_DATA(PyTypeObject)	PyMAPIStoreTable;
+PyAPI_DATA(PyTypeObject)	PyMAPIStoreRows;
 PyAPI_DATA(PyTypeObject)	PyMAPIStoreIndexing;
 
 #ifndef __BEGIN_DECLS
@@ -149,6 +181,9 @@ __BEGIN_DECLS
 
 void PyErr_SetMAPIStoreError(uint32_t);
 void PyErr_SetMAPISTATUSError(enum MAPISTATUS retval);
+enum mapistore_error pymapistore_get_uri(struct mapistore_context *mstore_ctx, const char *username, uint64_t fmid, PyObject **ppy_uri);
+enum mapistore_error pymapistore_get_properties(PyObject *list, struct mapistore_context *mstore_ctx, uint32_t context_id, void *object, PyObject **ppy_dict);
+enum mapistore_error pymapistore_set_properties(PyObject *dict, struct mapistore_context *mstore_ctx, uint32_t context_id, void *object);
 PyObject *pymapistore_python_dict_from_properties(enum MAPITAGS *aulPropTag, struct mapistore_property_data *prop_data, uint32_t count);
 enum mapistore_error pymapistore_data_from_pyobject(TALLOC_CTX *mem_ctx, uint32_t proptag, PyObject *value, void **data);
 
@@ -160,6 +195,7 @@ PyMAPIStoreGlobals *get_PyMAPIStoreGlobals(void);
 void initmapistore_context(PyObject *);
 void initmapistore_folder(PyObject *);
 void initmapistore_message(PyObject *);
+void initmapistore_attachment(PyObject *);
 void initmapistore_mgmt(PyObject *);
 void initmapistore_freebusy_properties(PyObject *);
 void initmapistore_table(PyObject *);

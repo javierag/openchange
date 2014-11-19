@@ -175,7 +175,7 @@ struct mapistore_backend {
 		enum mapistore_error	(*init)(const char *);
 		enum mapistore_error	(*list_contexts)(TALLOC_CTX *, const char *, const char *, struct indexing_context *, struct mapistore_contexts_list **);
 		enum mapistore_error	(*create_context)(TALLOC_CTX *, const char *, struct mapistore_connection_info *, struct indexing_context *, const char *, void **);
-		enum mapistore_error	(*create_root_folder)(const char *, enum mapistore_context_role, uint64_t, const char *, TALLOC_CTX *, char **);
+		enum mapistore_error	(*create_root_folder)(TALLOC_CTX *, const char *, const char *, enum mapistore_context_role, uint64_t, const char *, char **);
 	} backend;
 
 	/** context operations */
@@ -212,9 +212,12 @@ struct mapistore_backend {
 		enum mapistore_error	(*submit)(void *, enum SubmitFlags);
 		enum mapistore_error	(*open_attachment)(TALLOC_CTX *, void *, uint32_t, void **);
                 enum mapistore_error	(*create_attachment)(void *, TALLOC_CTX *, void **, uint32_t *);
+                enum mapistore_error	(*delete_attachment)(void *, uint32_t);
 		enum mapistore_error	(*get_attachment_table)(TALLOC_CTX *, void *, void **, uint32_t *);
+		enum mapistore_error	(*get_attachment_ids)(TALLOC_CTX *, void *, uint32_t **, uint16_t *);
 
 		/* attachment operations */
+		enum mapistore_error	(*save_attachment)(TALLOC_CTX *, void *);
                 enum mapistore_error	(*open_embedded_message)(void *, TALLOC_CTX *, void **, uint64_t *, struct mapistore_message **);
                 enum mapistore_error	(*create_embedded_message)(void *, TALLOC_CTX *, void **, struct mapistore_message **);
 	} message;
@@ -232,7 +235,7 @@ struct mapistore_backend {
 
         /** oxcprpt operations */
         struct {
-                enum mapistore_error	(*get_available_properties)(void *, TALLOC_CTX *, struct SPropTagArray **);
+                enum mapistore_error	(*get_available_properties)(TALLOC_CTX *, void *, struct SPropTagArray **);
 		enum mapistore_error	(*get_properties)(TALLOC_CTX *, void *, uint16_t, enum MAPITAGS *, struct mapistore_property_data *);
                 enum mapistore_error	(*set_properties)(void *, struct SRow *);
         } properties;
@@ -346,9 +349,12 @@ enum mapistore_error mapistore_message_save(struct mapistore_context *, uint32_t
 enum mapistore_error mapistore_message_submit(struct mapistore_context *, uint32_t, void *, enum SubmitFlags);
 enum mapistore_error mapistore_message_open_attachment(struct mapistore_context *, uint32_t, void *, TALLOC_CTX *, uint32_t, void **);
 enum mapistore_error mapistore_message_create_attachment(struct mapistore_context *, uint32_t, void *, TALLOC_CTX *, void **, uint32_t *);
+enum mapistore_error mapistore_message_delete_attachment(struct mapistore_context *, uint32_t, void *, uint32_t);
 enum mapistore_error mapistore_message_get_attachment_table(struct mapistore_context *, uint32_t, void *, TALLOC_CTX *, void **, uint32_t *);
+enum mapistore_error mapistore_message_get_attachment_ids(struct mapistore_context *, uint32_t, void *, TALLOC_CTX *, uint32_t **, uint16_t *);
 enum mapistore_error mapistore_message_attachment_open_embedded_message(struct mapistore_context *, uint32_t, void *, TALLOC_CTX *, void **, uint64_t *, struct mapistore_message **msg);
 enum mapistore_error mapistore_message_attachment_create_embedded_message(struct mapistore_context *, uint32_t, void *, TALLOC_CTX *, void **, struct mapistore_message **msg);
+enum mapistore_error mapistore_attachment_save(struct mapistore_context *, uint32_t, void *, TALLOC_CTX *);
 
 enum mapistore_error mapistore_table_get_available_properties(struct mapistore_context *, uint32_t, void *, TALLOC_CTX *, struct SPropTagArray **);
 enum mapistore_error mapistore_table_set_columns(struct mapistore_context *, uint32_t, void *, uint16_t, enum MAPITAGS *);

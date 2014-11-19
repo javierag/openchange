@@ -868,7 +868,12 @@ static struct mapi_response *EcDoRpc_process_transaction(TALLOC_CTX *mem_ctx,
                                                          &(mapi_response->mapi_repl[idx]),
                                                          mapi_response->handles, &size);
 			break;
-		/* op_MAPI_DeleteAttach: 0x24 */
+                case op_MAPI_DeleteAttach: /* 0x24 */
+			retval = EcDoRpc_RopDeleteAttach(mem_ctx, emsmdbp_ctx,
+                                                         &(mapi_request->mapi_req[i]),
+                                                         &(mapi_response->mapi_repl[idx]),
+                                                         mapi_response->handles, &size);
+			break;
 		case op_MAPI_SaveChangesAttachment: /* 0x25 */
 			retval = EcDoRpc_RopSaveChangesAttachment(mem_ctx, emsmdbp_ctx,
                                                                   &(mapi_request->mapi_req[i]),
@@ -1056,7 +1061,12 @@ static struct mapi_response *EcDoRpc_process_transaction(TALLOC_CTX *mem_ctx,
 			break;
 		/* op_MAPI_Progress: 0x50 */
 		/* op_MAPI_TransportNewMail: 0x51 */
-		/* op_MAPI_GetValidAttachments: 0x52 */
+		case op_MAPI_GetValidAttachments: /* 0x52 */
+			retval = EcDoRpc_RopGetValidAttachments(mem_ctx, emsmdbp_ctx,
+								&(mapi_request->mapi_req[i]),
+								&(mapi_response->mapi_repl[idx]),
+								mapi_response->handles, &size);
+			break;
 		case op_MAPI_GetNamesFromIDs: /* 0x55 */
 			retval = EcDoRpc_RopGetNamesFromIDs(mem_ctx, emsmdbp_ctx,
 							    &(mapi_request->mapi_req[i]),
