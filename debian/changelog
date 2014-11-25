@@ -1,3 +1,39 @@
+openchange (3:2.3-zentyal4) trusty; urgency=medium
+
+  [ Jesús García Sáez ]
+  * [84ea87] imported openchange_user_cleanup script from old version
+  * [52341f] user_cleanup_script updated for mysql backends
+  * [dc2a71] openchange_user_cleanup: pretty format and --ignore=sogo|openchange|imap option
+  * [5c87d1] openchange_user_cleanup: typo in help
+  * [489eb4] openchange_user_cleanup: change regexp format to get connection strings
+  * [896a89] openchange_user_cleanup: ignore default to empty list
+  * [112cb5] openchange_user_cleanup: enable autocommit
+  * [89caaa] openchange_user_cleanup: drop sogo table instead of truncate data
+  * [59c5e8] removed unnecessary null check conditions to free pointers
+  * [cabf6c] Fix memory leak in mapistore_indexing_record_add_fmid
+  * [52bdd5] talloc_named -> talloc_new
+
+  [ Enrique J. Hernández Blasco ]
+  * [6e83fd] Use DLIST macro whenever possible
+  * [74ea84] Use new 4.0 old repo to retrace old crashes
+  * [1d5d4b] Fix #CR-633 in oxcfxics on folder change
+  * [db7d8f] CR-131 and CR-50: Fix sync FAI messages when Only Specified Properties is set at RopSyncConfigure
+  * [283d47] Add a mapitest to crash on ModifyRecipients
+  * [0f6f5b] Fix CR-657: RecipientRow prop number is lower than ModifyRecipientsROP prop count
+
+  [ Samuel Cabrero ]
+  * [770587] Fix memory leak mysql result not freed
+  * [53bf95] Fix memory leak in mapistore_backend_get_path
+  * [8ee0e2] Ensure mysql result pointer is valid only when returning MYSQL_SUCCESS
+
+  [ Jelmer Vernooij ]
+  * [a6500e] s/openchange.ldb/OpenChange database/, since this condition can also occur with the MySQL backend.
+  * [b70940] Print an error when no mapistore backends are available.
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Tue, 25 Nov 2014 10:32:08 +0100
+
 openchange (3:2.3-zentyal3) trusty; urgency=medium
 
   [ Enrique J. Hernández Blasco ]
