@@ -1056,6 +1056,7 @@ provision-install: python-install
 	$(INSTALL) -m 0644 setup/AD/oc_provision* $(DESTDIR)$(samba_setupdir)/AD/
 	$(INSTALL) -m 0644 setup/AD/prefixMap.txt $(DESTDIR)$(samba_setupdir)/AD/
 	$(INSTALL) -m 0644 setup/AD/provision_schema_basedn_modify.ldif $(DESTDIR)$(samba_setupdir)/AD/
+	$(INSTALL) -m 0644 setup/AD/update_now.ldif $(DESTDIR)$(samba_setupdir)/AD/
 	$(INSTALL) -d $(DESTDIR)$(datadir)/setup
 	$(INSTALL) -d $(DESTDIR)$(datadir)/setup/openchangedb
 	$(INSTALL) -m 0644 setup/openchangedb/oc_provision* $(DESTDIR)$(datadir)/setup/openchangedb/
@@ -1070,6 +1071,7 @@ provision-uninstall: python-uninstall
 	rm -f $(DESTDIR)$(samba_setupdir)/AD/oc_provision_schema.ldif
 	rm -f $(DESTDIR)$(samba_setupdir)/AD/oc_provision_schema_modify.ldif
 	rm -f $(DESTDIR)$(samba_setupdir)/AD/oc_provision_schema_ADSC.ldif
+	rm -f $(DESTDIR)$(samba_setupdir)/AD/update_now.ldif
 	rm -f $(DESTDIR)$(samba_setupdir)/AD/prefixMap.txt
 	rm -rf $(DESTDIR)$(datadir)/setup/AD
 	rm -rf $(DESTDIR)$(datadir)/setup/openchangedb
@@ -1192,6 +1194,54 @@ bin/mapiprofile: 	utils/mapiprofile.o 			\
 	@echo "Linking $@"
 	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -lpopt
 
+###################
+# rpcextract
+###################
+
+rpcextract: bin/rpcextract
+
+rpcextract-install: rpcextract
+	$(INSTALL) -d $(DESTDIR)$(bindir)
+	$(INSTALL) -m 0755 bin/rpcextract $(DESTDIR)$(bindir)
+
+rpcextract-uninstall:
+	rm -f $(DESTDIR)$(bindir)/rpcextract
+
+rpcextract-clean::
+	rm -f bin/rpcextract
+	rm -f utils/rpcextract.o
+
+clean:: rpcextract-clean
+
+bin/rpcextract:		utils/rpcextract.o		\
+			libmapi.$(SHLIBEXT).$(PACKAGE_VERSION)
+	@echo "Linking $@"
+	@$(CC) $(CFLAGS) $(PCAP_CFLAGS) -o $@ $^ $(LDFLAGS) $(PCAP_LIBS) $(LIBS) -lpopt -lndr
+
+
+###################
+# mapipropsdump
+###################
+
+mapipropsdump:	bin/mapipropsdump
+
+mapipropsdump-install:	mapipropsdump
+	$(INSTALL) -d $(DESTDIR)$(bindir)
+	$(INSTALL) -m 0755 bin/mapipropsdump $(DESTDIR)$(bindir)
+
+mapipropsdump-uninstall:
+	rm -f $(DESTDIR)$(bindir)/mapipropsdump
+
+mapipropsdump-clean::
+	rm -f bin/mapipropsdump
+	rm -f utils/mapipropsdump.o
+
+clean:: mapipropsdump-clean
+
+bin/mapipropsdump: 	utils/mapipropsdump.o				\
+			libmapi.$(SHLIBEXT).$(PACKAGE_VERSION)
+	@echo "Linking $@"
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(SAMBA_LIBS) $(LIBS) $(DL_LIBS) -lpopt -lndr
 
 ###################
 #openchangepfadmin
