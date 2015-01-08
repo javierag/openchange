@@ -1,3 +1,35 @@
+openchange (3:2.3-zentyal6) trusty; urgency=medium
+
+  [ Jesús García Sáez ]
+  * [01d596] nspi: refactor bind method
+  * [a773ac] nspi: bind method must not free global emsabp_tdb_ctx
+  * [37ecd9] indexing: fmid as string in sql queries
+
+  [ José Antonio Calvo ]
+  * [fdd9d8] Include openchange_user_cleanup.py in packaging
+
+  [ Javier Amor García ]
+  * [517da3] When provisioning send schemas additions to schema master
+  * [e723ad] Allow use Windows server as schema master
+  * [095661] Fixed Makefile to take into account update_now.ldif
+
+  [ Andrew Fuller ]
+  * [ee6db8] [libmapi++] Fix segfault when login() fails.
+
+  [ Enrique J. Hernández Blasco ]
+  * [8ae145] Move openchangedb table init log level to 5
+  * [ca1113] Parsing One-Off EntryID structure
+  * [7f7f31] Checking talloc return value for OOM errors
+
+  [ Julien Kerihuel ]
+  * [8b061a] - Add a tool to dump packed ROPs buffer which depends on a context (e.g. property tags in request and buffer in reply) - Add a function to get a SPropValue array from a DATA_BLOB given a specific offset
+  * [254051] Add rpcextract tool to repository.
+  * [dd332f] Add libpcap-dev to travis-ci
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Thu, 08 Jan 2015 11:38:31 +0100
+
 openchange (3:2.3-zentyal5) trusty; urgency=medium
 
   [ Jelmer Vernooij ]
