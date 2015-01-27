@@ -1,3 +1,37 @@
+openchange (3:2.3-zentyal7) trusty; urgency=medium
+
+  [ Andrew Fuller ]
+  * [b221c2] Enable async notifications.
+  * [484ff2] Declare variables at the top, as requested.
+
+  [ Jesús García Sáez ]
+  * [3ca571] openchangedb logger test: remove printf
+  * [e7032e] openchangedb: fix message_set_properties for some properties
+
+  [ Carlos Pérez-Aradros Herce ]
+  * [123069] Allow organization deprovision
+
+  [ Javier Amor García ]
+  * [e90960] Add check option to openchange_provision
+
+  [ Jelmer Vernooij ]
+  * [9cdb12] Change openchangedb default to nothing, and require users specify 'ldb' for the ldb backend.
+  * [400434] In provision, require explicit setting to 'ldb' for openchangedb backend.
+  * [453a0c] Error on unknown OpenChangeDB backend.
+  * [5456ea] Use an openchange-owned PPA, so other people can also upload new packages.
+  * [e8d529] Require passing backend into openchangedb_provision; use ldb backend in provision test.
+
+  [ Enrique J. Hernández Blasco ]
+  * [d382f9] Do not crash on incorrect GLOBCNT range sent by client
+  * [a13466] Reset synccontext when the sent cn is greater than expected
+
+  [ Samuel Cabrero ]
+  * [f09f82] Notification service implementation based on RabbitMQ
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Tue, 27 Jan 2015 08:49:25 +0100
+
 openchange (3:2.3-zentyal6) trusty; urgency=medium
 
   [ Jesús García Sáez ]
