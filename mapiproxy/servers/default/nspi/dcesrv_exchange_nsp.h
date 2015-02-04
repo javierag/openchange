@@ -41,6 +41,10 @@
 #endif
 #endif
 
+/* The IS_WINUNICODE_CODEPAGE  macro checks that the code page in the in.pStat value is CP_WINUNICODE (equivalent to the CP_UNICODE macro).*/
+#define IS_WINUNICODE_CODEPAGE(r) (r->in.pStat->CodePage == CP_UNICODE)
+#define CONTAINER_EXISTS(r) ((!r->in.pStat->ContainerID) || (emsabp_tdb_lookup_MId(emsabp_ctx->tdb_ctx, r->in.pStat->ContainerID)) == true)
+
 struct emsabp_context {
 	const char		*account_name;
 	const char		*organization_name;
