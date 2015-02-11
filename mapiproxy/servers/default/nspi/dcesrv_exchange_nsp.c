@@ -880,6 +880,7 @@ static void dcesrv_NspiGetSpecialTable(struct dcesrv_call_state *dce_call,
 				       TALLOC_CTX *mem_ctx,
 				       struct NspiGetSpecialTable *r)
 {
+	enum MAPISTATUS			retval = MAPI_E_SUCCESS;
 	struct emsabp_context		*emsabp_ctx = NULL;
 
 	DEBUG(3, ("exchange_nsp: NspiGetSpecialTable (0xC)\n"));
@@ -887,26 +888,26 @@ static void dcesrv_NspiGetSpecialTable(struct dcesrv_call_state *dce_call,
 	/* Step 0. Ensure incoming user is authenticated */
 	if (!dcesrv_call_authenticated(dce_call)) {
 		DEBUG(1, ("No challenge requested by client, cannot authenticate\n"));
-		DCESRV_NSP_RETURN(r, MAPI_E_LOGON_FAILED, NULL);
+		retval = MAPI_E_LOGON_FAILED;
+		goto end;
 	}
 
 	emsabp_ctx = dcesrv_find_emsabp_context(&r->in.handle->uuid);
 	if (!emsabp_ctx) {
-		DCESRV_NSP_RETURN(r, MAPI_E_CALL_FAILED, NULL);
+		retval = MAPI_E_CALL_FAILED;
+		goto end;
 	}
-
-	/* Step 1. (FIXME) We arbitrary set lpVersion to 0x1 */
-	r->out.lpVersion = talloc_zero(mem_ctx, uint32_t);
-	*r->out.lpVersion = 0x1;
 
 	/* Step 2. Allocate output SRowSet and call associated emsabp function */
 	r->out.ppRows = talloc_zero(mem_ctx, struct PropertyRowSet_r *);
 	if (!r->out.ppRows) {
-		DCESRV_NSP_RETURN(r, MAPI_E_NOT_ENOUGH_RESOURCES, NULL);
+		retval = MAPI_E_NOT_ENOUGH_RESOURCES;
+		goto end;
 	}
 	r->out.ppRows[0] = talloc_zero(mem_ctx, struct PropertyRowSet_r);
 	if (!r->out.ppRows[0]) {
-		DCESRV_NSP_RETURN(r, MAPI_E_NOT_ENOUGH_RESOURCES, NULL);
+		retval = MAPI_E_NOT_ENOUGH_RESOURCES;
+		goto end;
 	}
 
 	if (r->in.dwFlags & NspiAddressCreationTemplates) {
@@ -914,8 +915,18 @@ static void dcesrv_NspiGetSpecialTable(struct dcesrv_call_state *dce_call,
 		r->out.result = emsabp_get_CreationTemplatesTable(mem_ctx, emsabp_ctx, r->in.dwFlags, r->out.ppRows);
 	} else {
 		DEBUG(5, ("Hierarchy Table requested\n"));
-		r->out.result = emsabp_get_HierarchyTable(mem_ctx, emsabp_ctx, r->in.dwFlags, r->out.ppRows);
+		retval = emsabp_get_HierarchyTable(mem_ctx, emsabp_ctx, r->in.dwFlags, r->out.ppRows);
+		/* When requesting hierarchy table we must set the version of the address book */ 
+		/* We arbitrary use 0x1 as version of our address book (lpVersion) */
+		r->out.lpVersion = talloc_zero(mem_ctx, uint32_t);
+		*r->out.lpVersion = 0x1;
 	}
+
+end:
+	if (retval != MAPI_E_SUCCESS) {
+		*r->out.ppRows = NULL;
+	}
+	DCESRV_NSP_RETURN(r, retval, NULL);
 }
 
 
