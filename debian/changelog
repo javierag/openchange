@@ -1,3 +1,46 @@
+openchange (3:2.3-zentyal8) trusty; urgency=medium
+
+  [ Enrique J. Hernández Blasco ]
+  * [7d9174] Add schema migration framework for OC DB MySQL backend
+  * [978978] Use new command for schema DB migrations
+  * [44fb04] Added Python headers as required by new migration framework
+  * [6768b5] OpenChangeDB MYSQL schema are now managed by migration code from python
+  * [04ec83] Indexing MySQL backend schema is now managed by Python code
+  * [2f9f31] Named properties MySQL Backend schema is now managed by Python code
+  * [19acdc] Call Python code directly instead of system to migrate schema
+  * [3f2265] Do not segfault when running schema migration from python program
+  * [d3077c] Added indexes on indexing related tables
+  * [859cd8] Fix emsmdbp_object_open_folder_by_fid return value to use enum MAPISTATUS
+  * [f7785c] Added mapi_error_to_mapistore utility function
+  * [abf415] Implement moving a mapistore folder to a root folder
+  * [7737bd] Use talloc_new instead of talloc_zero(NULL, TALLOC_CTX)
+
+  [ Jesús García Sáez ]
+  * [bd6f6a] mapiproxy/fault_util: Reformat OC_ABORT output
+  * [1395f6] add some \n to debug messages
+  * [0cfbfa] OC_ABORT macro renamed OC_PANIC
+  * [fe8500] mapiproxy/fault_util: add docstring
+  * [7179a3] openchangedb: create_folder must use the given change number
+
+  [ Jelmer Vernooij ]
+  * [b418ad] Use standard function for getting parameter list.
+  * [0f454c] Change configuration defaults for mapiproxy to:
+  * [19ad75] Initial developer doc for standalone OpenChange.
+  * [319f5f] Stop including samba_util.h.
+  * [9aaa96] Ship private copy of dlinklist.h from Samba.
+  * [f72bee] Remove unnecessary includes of core/ files.
+  * [21b590] Add suggested API for logging in OpenChange.
+
+  [ Julio García ]
+  * [58155e] Adapting packaging to the migration code
+
+  [ Javier Amor García ]
+  * [922b64] Better control of openchange_provision and openchange_newuser parameters
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Thu, 12 Feb 2015 10:03:27 +0100
+
 openchange (3:2.3-zentyal7) trusty; urgency=medium
 
   [ Andrew Fuller ]
