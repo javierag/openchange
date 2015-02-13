@@ -314,10 +314,11 @@ static void dcesrv_do_NspiUpdateStat(TALLOC_CTX *mem_ctx, struct NspiUpdateStat 
 		}
 	}
 	
-	if (row == 0) {
-		r->out.pStat->CurrentRec = MID_BEGINNING_OF_TABLE;
-	} else if (row == row_max) {
+	if (row == row_max) {
+		/* even if row = 0 we should return MID_END_OF_TABLE */
 		r->out.pStat->CurrentRec = MID_END_OF_TABLE;
+        } else if (row == 0) {
+		r->out.pStat->CurrentRec = MID_BEGINNING_OF_TABLE;
 	} else {
 		r->out.pStat->CurrentRec = mids->aulPropTag[row];
 	}
@@ -454,7 +455,7 @@ static void dcesrv_NspiQueryRows(struct dcesrv_call_state *dce_call,
 
 		if (r->in.pStat->Delta >= 0) {
 			start_pos = r->in.pStat->NumPos + r->in.pStat->Delta;
-			if (start_pos >= ldb_res->count) {
+			if ((start_pos != 0) && (start_pos >= ldb_res->count)) {
 				/* inexistent position */
 				retval = MAPI_E_INVALID_PARAMETER;
 				goto failure;
