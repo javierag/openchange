@@ -49,7 +49,7 @@ static void oxomsg_mapistore_handle_message_relocation(struct emsmdbp_context *e
 	struct emsmdbp_object		*message_object;
 	enum MAPISTATUS			retval;
 
-	mem_ctx = talloc_zero(NULL, TALLOC_CTX);
+	mem_ctx = talloc_new(NULL);
 
 	property_data = talloc_array(mem_ctx, struct mapistore_property_data, properties_count);
 
@@ -422,6 +422,10 @@ _PUBLIC_ enum MAPISTATUS EcDoRpc_RopTransportSend(TALLOC_CTX *mem_ctx,
 		DEBUG(0, ("Not implemented yet - shouldn't occur\n"));
 		break;
 	case true:
+		retval = emsmdbp_object_attach_sharing_metadata_XML_file(emsmdbp_ctx, object);
+		if (retval != MAPI_E_SUCCESS) {
+			DEBUG(0, ("Failing to create sharing metadata for a sharing object: %s\n", mapi_get_errstr(retval)));
+		}
 		mapistore_message_submit(emsmdbp_ctx->mstore_ctx, emsmdbp_get_contextID(object), object->backend_object, 0);
 
 		oxomsg_mapistore_handle_message_relocation(emsmdbp_ctx, object);

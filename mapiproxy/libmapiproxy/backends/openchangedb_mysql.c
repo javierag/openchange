@@ -27,12 +27,11 @@
 #include "libmapi/libmapi.h"
 #include "libmapi/libmapi_private.h"
 #include <mysql/mysql.h>
-#include <samba_util.h>
 #include <inttypes.h>
 #include <time.h>
 #include "../../util/mysql.h"
+#include "../../util/schema_migration.h"
 
-#define SCHEMA_FILE	"openchangedb_schema.sql"
 #define PUBLIC_FOLDER	"public"
 #define SYSTEM_FOLDER	"system"
 
@@ -1784,7 +1783,7 @@ static enum MAPISTATUS create_mailbox(struct openchangedb_context *self,
 static enum MAPISTATUS create_folder(struct openchangedb_context *self,
 				     const char *username,
 				     uint64_t pfid, uint64_t fid,
-				     uint64_t changeNumber,
+				     uint64_t change_number,
 				     const char *MAPIStoreURI, int systemIdx)
 {
 	TALLOC_CTX	*mem_ctx;
@@ -1792,7 +1791,6 @@ static enum MAPISTATUS create_folder(struct openchangedb_context *self,
 	enum MAPISTATUS	retval;
 	char		*sql, *values_sql, *value;
 	const char	**l;
-	uint64_t	change_number = 0;
 	time_t		unix_time;
 	NTTIME		now;
 
@@ -1807,9 +1805,6 @@ static enum MAPISTATUS create_folder(struct openchangedb_context *self,
 		OPENCHANGE_RETVAL_ERR(MAPI_E_CALL_FAILED, mem_ctx);
 	}
 	unix_to_nt_time(&now, unix_time);
-
-	retval = get_new_changeNumber(self, username, &change_number);
-	OPENCHANGE_RETVAL_IF(retval != MAPI_E_SUCCESS, retval, mem_ctx);
 
 	if (is_public_folder(fid)) {
 		// Insert row in folders
@@ -3703,10 +3698,8 @@ enum MAPISTATUS openchangedb_mysql_initialize(TALLOC_CTX *mem_ctx,
 {
 	struct openchangedb_context 	*oc_ctx;
 	MYSQL				*conn = NULL;
-	char 				*schema_file;
 	const char			*connection_string;
-	const char			*schema_dir;
-	bool				schema_created;
+	int				schema_created_ret;
 
 	oc_ctx = talloc_zero(mem_ctx, struct openchangedb_context);
 	// Initialize context with function pointers
@@ -3779,18 +3772,12 @@ enum MAPISTATUS openchangedb_mysql_initialize(TALLOC_CTX *mem_ctx,
 	oc_ctx->data = conn;
 	talloc_set_destructor(oc_ctx, openchangedb_mysql_destructor);
 	if (!table_exists(oc_ctx->data, "folders")) {
-		schema_dir = lpcfg_parm_string(lp_ctx, NULL, "openchangedb", "data");
-		schema_file = talloc_asprintf(mem_ctx, "%s/"SCHEMA_FILE,
-					      schema_dir ? schema_dir :
-					      openchangedb_data_dir());
-		DEBUG(3, ("Creating schema for openchangedb on mysql %s with %s\n",
-			  connection_string, schema_file));
-		schema_created = create_schema(oc_ctx->data, schema_file);
-		talloc_free(schema_file);
-
-		if (!schema_created) {
-			DEBUG(1, ("Failed openchangedb schema creation, "
-				  "last mysql error was: `%s`\n", mysql_error(conn)));
+		DEBUG(3, ("Creating schema for openchangedb on mysql %s\n",
+			  connection_string));
+		schema_created_ret = migrate_openchangedb_schema(mem_ctx, connection_string);
+		if (schema_created_ret) {
+			DEBUG(1, ("Failed openchangedb schema creation using migration framework: %d\n",
+				  schema_created_ret));
 			OPENCHANGE_RETVAL_ERR(MAPI_E_NOT_INITIALIZED, oc_ctx);
 		}
 	}

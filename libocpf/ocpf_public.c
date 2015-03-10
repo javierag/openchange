@@ -27,6 +27,7 @@
 
 #include "libocpf/ocpf.h"
 #include "libocpf/ocpf_api.h"
+#include "libocpf/ocpf_private.h"
 
 int ocpf_yylex_init(void *);
 int ocpf_yylex_init_extra(struct ocpf_context *, void *);
@@ -441,7 +442,7 @@ static enum MAPISTATUS ocpf_folder_lookup(TALLOC_CTX *mem_ctx,
 	MAPIFreeBuffer(SPropTagArray);
 	if (retval != MAPI_E_SUCCESS) return false;
 
-	while (((retval = QueryRows(&obj_htable, 0x32, TBL_ADVANCE, &SRowSet)) != MAPI_E_NOT_FOUND && SRowSet.cRows)) {
+	while (((retval = QueryRows(&obj_htable, 0x32, TBL_ADVANCE, TBL_FORWARD_READ, &SRowSet)) != MAPI_E_NOT_FOUND && SRowSet.cRows)) {
 		for (i = 0; i < SRowSet.cRows; i++) {
 			fid = (const uint64_t *)find_SPropValue_data(&SRowSet.aRow[i], PR_FID);
 			if (fid && *fid == sfid) {

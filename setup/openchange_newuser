@@ -50,7 +50,7 @@ parser.add_option("--mail", type="string", metavar="MAIL",
                        "will be samaccountname@realm")
 opts, args = parser.parse_args()
 
-if len(args) == 0:
+if len(args) != 1:
     parser.print_usage()
     sys.exit(1)
 elif not opts.create and not opts.enable and not opts.disable:

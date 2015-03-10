@@ -28,7 +28,7 @@
 #include "mapistore_private.h"
 #include "mapistore_nameid.h"
 
-#include <dlinklist.h>
+#include "utils/dlinklist.h"
 #include "libmapi/libmapi_private.h"
 
 #include <string.h>
@@ -49,6 +49,7 @@ _PUBLIC_ struct mapistore_context *mapistore_init(TALLOC_CTX *mem_ctx, struct lo
 	const char			*private_dir;
 	char				*mapping_path;
 	const char			*indexing_url;
+	const char			*cache_url;
 
 	if (!lp_ctx) {
 		return NULL;
@@ -106,6 +107,9 @@ _PUBLIC_ struct mapistore_context *mapistore_init(TALLOC_CTX *mem_ctx, struct lo
 		talloc_free(mstore_ctx);
 		return NULL;
 	}
+
+	cache_url = lpcfg_parm_string(lp_ctx, NULL, "mapistore", "indexing_cache");
+	mapistore_set_default_cache_url(cache_url);
 
 #if 0
 	mstore_ctx->mq_ipc = mq_open(MAPISTORE_MQUEUE_IPC, O_WRONLY|O_NONBLOCK|O_CREAT, 0755, NULL);
@@ -741,7 +745,17 @@ _PUBLIC_ enum mapistore_error mapistore_folder_move_copy_messages(struct mapisto
 }
 
 /**
+   \details Move a mapistore folder to target folder
 
+   \param mstore_ctx pointer to the mapistore context
+   \param context_id the context identifier referencing the backend
+   \param move_folder the folder backend object to move
+   \param target_folder the folder backend object which becomes the parent folder of move_folder.
+   If it is NULL, then the move_folder will become to a root folder
+   \param mem_ctx the TALLOC_CTX memory context
+   \param new_folder_name the new folder name after performing the move operation
+
+   \return MAPISTORE_SUCCESS on success, otherwise MAPISTORE errors
  */
 _PUBLIC_ enum mapistore_error mapistore_folder_move_folder(struct mapistore_context *mstore_ctx, uint32_t context_id,
 							   void *move_folder, void *target_folder, TALLOC_CTX *mem_ctx, const char *new_folder_name)
@@ -825,6 +839,8 @@ _PUBLIC_ enum mapistore_error mapistore_folder_get_child_count(struct mapistore_
 
 	/* Sanity checks */
 	MAPISTORE_SANITY_CHECKS(mstore_ctx, NULL);
+	MAPISTORE_RETVAL_IF(!folder, MAPISTORE_ERR_INVALID_PARAMETER, NULL);
+	MAPISTORE_RETVAL_IF(!RowCount, MAPISTORE_ERR_INVALID_PARAMETER, NULL);
 
 	/* Step 0. Ensure the context exists */
 	backend_ctx = mapistore_backend_lookup(mstore_ctx->context_list, context_id);
@@ -1812,4 +1828,61 @@ _PUBLIC_ enum MAPISTATUS mapistore_error_to_mapi(enum mapistore_error mapistore_
 	}
 
 	return mapi_err;
+}
+
+/**
+   \details Map a MAPI error code to MAPISTORE error code. We cannot
+   map 1 to 1 for the reduced MAPISTORE scope, then we mostly likely
+   return general MAPISTORE error code.
+
+   \param mapi_err the mapi status error code
+
+   \return the mapped MAPISTORE error
+ */
+_PUBLIC_ enum mapistore_error mapi_error_to_mapistore(enum MAPISTATUS mapi_err)
+{
+        enum mapistore_error mapistore_err;
+
+        /* We cannot map 1 to 1 so we do the general error mapping */
+
+        switch(mapi_err) {
+        case MAPI_E_SUCCESS:
+                mapistore_err = MAPISTORE_SUCCESS;
+                break;
+        case MAPI_E_NO_SUPPORT:
+                mapistore_err = MAPISTORE_ERROR;
+                break;
+        case MAPI_E_NOT_ENOUGH_MEMORY:
+                mapistore_err = MAPISTORE_ERR_NO_MEMORY;
+                break;
+        case MAPI_E_NOT_INITIALIZED:
+                mapistore_err = MAPISTORE_ERR_NOT_INITIALIZED;
+                break;
+        case MAPI_E_CORRUPT_STORE:
+                mapistore_err = MAPISTORE_ERR_CORRUPTED;
+                break;
+        case MAPI_E_DISK_ERROR:
+                mapistore_err = MAPISTORE_ERR_INVALID_DATA;
+                break;
+        case MAPI_E_NOT_FOUND:
+                mapistore_err = MAPISTORE_ERR_NOT_FOUND;
+                break;
+        case MAPI_E_COLLISION:
+                mapistore_err = MAPISTORE_ERR_EXIST;
+                break;
+        case MAPI_E_NO_ACCESS:
+                mapistore_err = MAPISTORE_ERR_DENIED;
+                break;
+        case MAPI_E_NOT_IMPLEMENTED:
+                mapistore_err = MAPISTORE_ERR_NOT_IMPLEMENTED;
+                break;
+        case MAPI_E_INVALID_PARAMETER:
+                mapistore_err = MAPISTORE_ERR_INVALID_PARAMETER;
+                break;
+        default:
+                DEBUG(4, ("Using default mapistore error for %s\n", mapi_get_errstr(mapi_err)));
+                mapistore_err = MAPISTORE_ERROR;
+        }
+
+        return mapistore_err;
 }
