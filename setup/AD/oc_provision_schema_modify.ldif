@@ -154,6 +154,7 @@ mayContain: msExchPoliciesExcluded
 mayContain: msExchPoliciesIncluded
 mayContain: msExchPolicyEnabled
 mayContain: msExchPolicyOptionList
+mayContain: msExchRecipientDisplayType
 
 #dn: CN=Mail-Recipient,${SCHEMADN}
 #changetype: modify
