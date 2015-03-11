@@ -23819,7 +23819,6 @@ schemaFlagsEx: FLAG_ATTR_IS_CRITICAL
 #  ms-Exch-Recipient-Display-Type
 # 
 dn: CN=ms-Exch-Recipient-Display-Type,${SCHEMADN}
-changetype: add
 objectClass: top
 objectClass: attributeSchema
 cn: ms-Exch-Recipient-Display-Type
@@ -23847,7 +23846,6 @@ objectCategory: CN=Attribute-Schema,${SCHEMADN}
 #  ms-Exch-Recipient-Type-Details
 # 
 dn: CN=ms-Exch-Recipient-Type-Details,${SCHEMADN}
-changetype: add
 objectClass: top
 objectClass: attributeSchema
 cn: ms-Exch-Recipient-Type-Details
