@@ -1136,15 +1136,17 @@ _PUBLIC_ enum MAPISTATUS emsabp_search(TALLOC_CTX *mem_ctx, struct emsabp_contex
 				       struct STAT *pStat, uint32_t limit)
 {
 	enum MAPISTATUS			retval;
-	struct ldb_result		*res = NULL;
+	struct ldb_result		*ldb_res = NULL;
 	struct PropertyRestriction_r	*res_prop = NULL;
 	const char * const		recipient_attrs[] = { "*", NULL };
-	int				ret;
 	uint32_t			i;
 	const char			*dn;
-	char				*fmt_str, *expression = NULL;
+	char				*fmt_str, *search_filter = NULL;
 	const char			*fmt_attr;
 	char				*attr;
+	int				ldb_ret;
+	struct ldb_server_sort_control	**ldb_sort_controls = NULL;
+	struct ldb_request		*ldb_req;
 
 	/* Step 0. Sanity Checks (MS-NSPI Server Processing Rules) */
 	if (pStat->SortType == SortTypePhoneticDisplayName) {
@@ -1161,7 +1163,18 @@ _PUBLIC_ enum MAPISTATUS emsabp_search(TALLOC_CTX *mem_ctx, struct emsabp_contex
 		return MAPI_E_CALL_FAILED;
 	}
 
-	/* Step 1. Apply restriction and retrieve results from AD */
+	/* Step 1. Apply sort type, restriction and retrieve results from AD */
+
+	/* We sort only for dispalyType because PhoneticDisplayName is not yet supported */
+	if (pStat->SortType == SortTypeDisplayName) {
+		ldb_sort_controls = talloc_array(emsabp_ctx->mem_ctx, struct ldb_server_sort_control *, 2);
+		ldb_sort_controls[0] = talloc(ldb_sort_controls, struct ldb_server_sort_control);
+		ldb_sort_controls[0]->attributeName = talloc_strdup(ldb_sort_controls, "displayName");
+		ldb_sort_controls[0]->orderingRule = NULL;
+		ldb_sort_controls[0]->reverse = 0;
+		ldb_sort_controls[1] = NULL; 
+	}              
+
 	if (restriction) {
 		/* FIXME: We only support RES_PROPERTY restriction */
 		if ((uint32_t)restriction->rt != RES_PROPERTY) {
@@ -1191,56 +1204,98 @@ _PUBLIC_ enum MAPISTATUS emsabp_search(TALLOC_CTX *mem_ctx, struct emsabp_contex
 
 		/* Special case: anr doesn't return correct result with partial search */
 		if (!strcmp(fmt_attr, "anr")) {
-			fmt_str = talloc_asprintf(mem_ctx, "(&(objectClass=user)(|(%s=%s)(userPrincipalName=%s))(!(objectClass=computer)))", fmt_attr, attr, attr);
+			fmt_str = talloc_asprintf(emsabp_ctx->mem_ctx, "(&(objectClass=user)(|(%s=%s)(userPrincipalName=%s))(!(objectClass=computer)))", fmt_attr, attr, attr);
 		} else if (!strcmp(fmt_attr, "legacyExchangeDN")) {
-			fmt_str = talloc_asprintf(mem_ctx, "(&(objectClass=user)(|(%s=%s)(%s%s)(anr=%s))(!(objectClass=computer)))", fmt_attr, attr, fmt_attr, attr, attr);
+			fmt_str = talloc_asprintf(emsabp_ctx->mem_ctx, "(&(objectClass=user)(|(%s=%s)(%s%s)(anr=%s))(!(objectClass=computer)))", fmt_attr, attr, fmt_attr, attr, attr);
 		} else {
-			fmt_str = talloc_asprintf(mem_ctx, "(&(objectClass=user)(%s=*%s*)(!(objectClass=computer)))", fmt_attr, attr);
+			fmt_str = talloc_asprintf(emsabp_ctx->mem_ctx, "(&(objectClass=user)(%s=*%s*)(!(objectClass=computer)))", fmt_attr, attr);
 		}
 	} else {
-		fmt_str = talloc_strdup(mem_ctx, "(&(objectClass=user)(displayName=*)(!(objectClass=computer)))");
+		fmt_str = talloc_strdup(emsabp_ctx->mem_ctx, "(&(objectClass=user)(displayName=*)(!(objectClass=computer)))");
 		attr = NULL;
 	}
 
-	retval = emsabp_include_organization_restriction(emsabp_ctx, fmt_str, &expression);
+	retval = emsabp_include_organization_restriction(emsabp_ctx, fmt_str, &search_filter);
 	OPENCHANGE_RETVAL_IF(retval != MAPI_E_SUCCESS, retval, fmt_str);
+        
+	ldb_res = talloc_zero(emsabp_ctx->mem_ctx, struct ldb_result);        
+	ldb_req = NULL;
+	ldb_ret = ldb_build_search_req(&ldb_req, emsabp_ctx->samdb_ctx, emsabp_ctx->mem_ctx,
+				       ldb_get_default_basedn(emsabp_ctx->samdb_ctx),
+				       LDB_SCOPE_SUBTREE,
+				       search_filter,
+				       recipient_attrs,
+				       NULL,
+				       ldb_res,
+				       ldb_search_default_callback,
+				       NULL);
+	if (ldb_ret != LDB_SUCCESS) {
+		retval = MAPI_E_NOT_FOUND;
+		goto failure;
+	}
+	
+	if (ldb_sort_controls) {
+		ldb_request_add_control(ldb_req, LDB_CONTROL_SERVER_SORT_OID, false, ldb_sort_controls);
+	}
+        
+	ldb_ret = ldb_request(emsabp_ctx->samdb_ctx, ldb_req);
 
-	ret = ldb_search(emsabp_ctx->samdb_ctx, emsabp_ctx, &res,
-			 ldb_get_default_basedn(emsabp_ctx->samdb_ctx),
-			 LDB_SCOPE_SUBTREE, recipient_attrs, expression, attr);
+	if (ldb_ret == LDB_SUCCESS) {
+		ldb_ret = ldb_wait(ldb_req->handle, LDB_WAIT_ALL);
+	} else {
+		retval = MAPI_E_NOT_FOUND;
+		goto failure;		     
+	}
+	
 	talloc_free(fmt_str);
-	talloc_free(expression);
+	fmt_str = NULL;
+	talloc_free(ldb_sort_controls);
+	ldb_sort_controls = NULL;
+	talloc_free(search_filter);
+	search_filter = NULL;
+        
+	if (ldb_ret != LDB_SUCCESS) {
+		retval =  MAPI_E_NOT_FOUND;
+                goto failure;
+	} else if (ldb_res == NULL) {
+		retval =  MAPI_E_INVALID_OBJECT;
+                goto failure;
+	} else if (!ldb_res->count) {
+		retval = MAPI_E_NOT_FOUND;
+                goto failure;
+	}
 
-	if (ret != LDB_SUCCESS) {
-		return MAPI_E_NOT_FOUND;
-	}
-	if (res == NULL) {
-		return MAPI_E_INVALID_OBJECT;
-	}
-	if (!res->count) {
-		return MAPI_E_NOT_FOUND;
-	}
-
-	if (limit && res->count > limit) {
+	if (limit && ldb_res->count > limit) {
 		return MAPI_E_TABLE_TOO_BIG;
 	}
 
-	MIds->aulPropTag = (uint32_t *) talloc_array(mem_ctx, uint32_t, res->count);
-	MIds->cValues = res->count;
+	MIds->aulPropTag = (uint32_t *) talloc_array(mem_ctx, uint32_t, ldb_res->count);
+	MIds->cValues = ldb_res->count;
 
 	/* Step 2. Create session MId for all fetched records */
-	for (i = 0; i < res->count; i++) {
-		dn = ldb_msg_find_attr_as_string(res->msgs[i], "distinguishedName", NULL);
+
+	for (i = 0; i < ldb_res->count; i++) {
+		dn = ldb_msg_find_attr_as_string(ldb_res->msgs[i], "distinguishedName", NULL);
 		retval = emsabp_tdb_fetch_MId(emsabp_ctx->ttdb_ctx, dn, (uint32_t *)&(MIds->aulPropTag[i]));
-		if (retval) {
+		if (retval != MAPI_E_SUCCESS) {
 			retval = emsabp_tdb_insert(emsabp_ctx->ttdb_ctx, dn);
 			OPENCHANGE_RETVAL_IF(retval, MAPI_E_CORRUPT_STORE, NULL);
 			retval = emsabp_tdb_fetch_MId(emsabp_ctx->ttdb_ctx, dn, (uint32_t *) &(MIds->aulPropTag[i]));
 			OPENCHANGE_RETVAL_IF(retval, MAPI_E_CORRUPT_STORE, NULL);
 		}
 	}
-
+     
 	return MAPI_E_SUCCESS;
+
+failure:
+	if (ldb_sort_controls)
+		talloc_free(ldb_sort_controls);
+	if (fmt_str)
+		talloc_free(fmt_str);
+	if (search_filter)
+		talloc_free(search_filter);
+
+	return retval;
 }
 
 
