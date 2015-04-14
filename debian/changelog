@@ -1,3 +1,111 @@
+openchange (3:2.3-zentyal10) trusty; urgency=medium
+
+  [ Jelmer Vernooij ]
+  * [26d408] Add proposal for openchange.conf.
+  * [079481] Implement oc_log API.
+  * [d4eea6] Move oc_log into libmapi/ (for now).
+  * [c10bdd] Convert libmapi/ to use oc_log.
+  * [994b26] Remove util/debug.h from libmapi public API.
+  * [528f0f] libocpf: Use oc_log.
+  * [fbf5bb] libmapiadmin: Use oc_log.
+  * [ff7dfe] mapiproxy: Use oc_log.
+  * [ae5d40] doc/examples: Use oc_log.
+  * [76da83] libexchange2ical: Use oc_log.
+  * [1b79ec] pyopenchange: Use oc_log.
+  * [60ba63] utils: Use oc_log.
+  * [3a4a9c] testprogs: Use oc_log.
+  * [c09174] Document the distinction between OC_DEBUG() and oc_log().
+  * [167d9f] Return if formatting log message fails.
+  * [9573d6] mapiproxy/servers: Use oc_log.
+  * [872faf] Add hook to set 'dcerpc endpoint servers' by default.
+  * [e72889] Only enable hook on Samba >= 4.3.
+  * [94cca2] openchangebackup: Use OC_DEBUG.
+  * [87b47a] openchangedb_mysql: Use OC_DEBUG.
+  * [2eff8c] emsmdb: Use OC_DEBUG().
+  * [d47c11] openchange_ldb: Use OC_DEBUG.
+  * [956039] remaining backends: Use OC_DEBUG.
+  * [4ccbe2] dcesrv_exchange_nsp: Use OC_DEBUG().
+  * [221cbf] mparse: Use OC_DEBUG.
+  * [f44faf] mapistore: Use OC_DEBUG.
+  * [f7d952] mpm_cache: Use OC_DEBUG.
+  * [4ccccd] dcesrv_exchange_nsp: Use OC_DEBUG.
+  * [ecb4fe] makepropslist: Use OC_DEBUG.
+  * [142f1b] Remove util/debug.h from all places except debug.h, faultutil.h and exchange.idl.
+  * [13b2e8] Fix spacing issues.
+  * [f93849] oc_log: Add a trailing newline if one is not yet present.
+  * [4aabd4] Remove ncacn_np from OpenChange DCE/RPC endpoints.
+
+  [ Javier Amor García ]
+  * [47377f] nspi: fixed UpdateStat and QueryRows methods
+  * [17b5f2] libmapi: fixed client call to NspiUpdateStat
+  * [606cf7] nspi: Added codepage check to implemented methods which lack it
+  * [f88ba6] nspi: QueryRows now can accept a NumPos bigger or equal to table size.
+  * [6776f4] provision: Make dns_onwner comparation case insensitive
+  * [6d2095] nspi: Make emsabp_search return ordered list of MIDs
+  * [a92b67] nspi: Fixed QueryRows and SeekEntries operation
+  * [690747] nspi: Initialize ldb_server_sort_control correctly to avoid inverse sort
+
+  [ Enrique J. Hernández Blasco ]
+  * [6029fb] Development documentation fixes
+  * [dd5211] Refactor fill_prop_index to reuse as much code as possible
+  * [b74423] Added checks on returned values on copying msg recipients
+  * [bd7aeb] Calendar sharing request for a special folder
+  * [e9fd83] Accept of Request is now working
+  * [a06d71] Implement deny of request calendar sharing
+  * [10c4c3] Create XML Sharing message for Request + Invitation requests
+  * [8ee5fb] Update CHANGES with changes from this branch
+  * [f9a6b9] Implement other types of sharing
+  * [654468] Update CHANGES to cover sharing spec
+  * [cb8b44] Use property.idl to store property values
+
+  [ Jesús García Sáez ]
+  * [2fe761] Updated CHANGES.md with nspi fixes
+  * [d09c01] nspi: reformat, no real changes
+  * [4f6be7] nspi: update stat needs emsabp context
+  * [25fdcb] openchange_user_cleanup: parse imap config properly
+
+  [ José Antonio Calvo ]
+  * [bd4b4b] Optional pass of source dirs to gdb in debugoc.py
+
+  [ Julio García ]
+  * [1a6665] Fixing gbp.conf to use only trusty branch to build
+  * [1bd382] bug-analysis: 4.1 is now the stable version
+  * [324d5f] Preparing release for 2.3-zentyal9
+  * [f909ab] Preparing for 2.3-zentyal10 release
+
+  [ Zentyal Jenkins ]
+  * [a28061] Version 3:2.3-zentyal9 released
+
+  [ Julien Kerihuel ]
+  * [a68e33] Define server type display name as a parametric option
+  * [405941] Add script to fix hierarchy errors appearing during synchronization process after IMAP mailbox is restored
+  * [178b6f] Add PidTagFolderFlags undocumented property Fix some MS-OXPROPS strings preventing makepropslist.py from running properly.
+  * [9a3afd] Add initial support for GetHierarchyTable Depth flag
+  * [8c3320] Fix retval and cleanup upon emsmdbp_object_table_get_row_props failure.
+  * [a68088] Update Copyright
+  * [35f729] Add OOM check on talloc_array Release table_object after use
+  * [2b1a07] Fix invalid check in recursive loop
+  * [3a38a4] Cleanup code
+  * [99462c] Add retval check on emsmdbp_folder_get_recursive_folder_count in oxcfold.c
+  * [82d439] Add missing retval check
+  * [efffe1] Replace error conditions with macro whereas available
+  * [0590eb] Check retval on emsmdbp_object_table_get_recursive_row_props in oxctabl.c
+  * [09225e] Free table object when required
+  * [a608c7] Improve error checking
+  * [e8489c] Clean-up unused code
+  * [f9e69b] Add OOM check Fix incorrect talloc allocation
+  * [e3eb48] Add support for PidTagParentFolderId, PidTagFolderFlags, 0x40820040 and PidTagLocalCommitTimeMax properties retrieved through QueryRows call when processing a hierarchy table with Depth flag defined.
+  * [dc961a] [ms-oxprops] Replace 0x40820040 with PidTagHierRev
+  * [4f6229] Remove OC_DEBUG extra \n in one of our script auto-generating code
+  * [b240a3] Document PidTagFolderFlags values and use bitmask in emsmdbp_object instead of hardcoded value
+  * [566424] Fix implicit enumeration conversions
+  * [f5d8dd] Revert "nspi: QueryRows now can accept a NumPos bigger or equal to table size."
+  * [885a6f] Fix string typo
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Tue, 14 Apr 2015 14:34:36 +0200
+
 openchange (3:2.3-zentyal9) trusty; urgency=medium
 
   [ Enrique J. Hernández Blasco ]
