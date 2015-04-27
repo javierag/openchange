@@ -1,6 +1,7 @@
 usr/lib/*/libmapiserver.so.*
 usr/lib/*/openchange/dcerpc_mapiproxy_server
 usr/sbin/openchange_newuser
+usr/sbin/openchange_group
 usr/sbin/openchange_neworganization
 usr/sbin/openchange_provision
 usr/sbin/openchange_migrate
