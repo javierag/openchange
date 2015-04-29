@@ -28,7 +28,6 @@ override_dh_auto_configure:
 		--prefix=/usr \
 		--mandir=/usr/share/man \
 		--with-modulesdir=/usr/lib/$(DEB_HOST_MULTIARCH)/openchange \
-		--disable-pymapi \
 		--libdir=/usr/lib/$(DEB_HOST_MULTIARCH) \
 		--enable-pyopenchange
 	# Urgh
