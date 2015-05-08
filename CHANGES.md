@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The descriptions should be useful and understandable for end users of OpenChange.
 Unreleased changes refer to our current [master branch](https://github.com/openchange/openchange/).
 
+## [2.3-zentyal11] - 2015-05-08
+
+### Fixes
+* Fix cache issues when cleaning the user data
+
 ## [2.3-zentyal10] - 2015-04-14
 
 ### Fixes
