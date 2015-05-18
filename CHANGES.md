@@ -7,14 +7,19 @@ Unreleased changes refer to our current [master branch](https://github.com/openc
 ## [Unreleased]
 
 ### Added
+* Sharing request and invitation of folders among different Outlook versions
 * Automatic Outlook inbox refresh when receiving new emails
 
 ### Fixes
+* Deny the removal of a special folder
+* Reuse special folders if a new one is being created with the same name
+* No more `Deleted Items (1)`-like duplicated folders
 * Fixed creation of root folders on online mode and some special folders such as Sync Issues.
 * Fixed `Invalid bookmark` error when clicking on `All address lists` entry in recipient selection dialog box
 
 ### Improvements
 * More records returned when searching for ambiguous names.
+* Script improving initial time access and loading of a migrated IMAP mailbox in Outlook
 
 
 ## [2.3-zentyal11] - 2015-05-08
@@ -40,7 +45,6 @@ Unreleased changes refer to our current [master branch](https://github.com/openc
 
 ### Performances
 * Fixed performance issue affecting initial synchronization of business size mailbox contents
-
 
 [//]: # (unreleased compare link should be changed to the latest release)
 [//]: # (the current hash was master when this CHANGES.md file was created)
