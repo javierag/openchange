@@ -135,6 +135,7 @@ Depends: openchangeproxy,
          ${misc:Depends},
          ${python:Depends},
          ${shlibs:Depends}
+Breaks: sogo-openchange (<< 2.2.17a-zentyal1+215)
 Description: Experimental MAPI (Exchange/Outlook) server
  This is a plugin for Samba 4 that adds server-side support for the MAPI
  protocol that is used by Microsoft Outlook and Exchange.
