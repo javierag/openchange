@@ -1,3 +1,198 @@
+openchange (3:2.4-zentyal1) trusty; urgency=medium
+
+  [ Julien Kerihuel ]
+  * [bae9d0] Add asyncemsmdb endpoint server stub with sample tevent_add_timer async call
+  * [ef6302] Add asyncemsmdb endpoint server stub with sample tevent_add_timer async call
+  * [60102d] [libmapi] avoid redefining __STDC_FORMAT_MACROS
+  * [8a96e4] Drop old notification system no longer in use
+  * [1eb81f] Add MAPISTORE_ERR_CONN_REFUSED error code
+  * [1a69aa] Add MAPISTORE_ERR_NOT_AVAILABLE error code
+  * [a1f842] Fix typo
+  * [d67b96] - Add initialization of mapistore notification subsystem - Add mapistore notification IDL to normalize storage of session data - Add session management add,delete,exist,get operations over memcached - Add unit tests for mapistore notification session management layer
+  * [7bb9f6] Remove unused variable
+  * [2e0991] - Add EcDoAsyncConnectEx implementation
+  * [a569b6] Add libnanomsg dependency
+  * [b200bb] Add documentation for mapistore:notification_cache option
+  * [f7c6dd] First iteration of the asynchronous emsmdb endpoint service.
+  * [609959] Add asyncemsmdb endpoint server stub with sample tevent_add_timer async call
+  * [1d735c] [libmapi] avoid redefining __STDC_FORMAT_MACROS
+  * [c269b1] Drop old notification system no longer in use
+  * [b9e480] Add MAPISTORE_ERR_CONN_REFUSED error code
+  * [fac62e] Add MAPISTORE_ERR_NOT_AVAILABLE error code
+  * [f35033] Fix typo
+  * [2b6fc7] - Add initialization of mapistore notification subsystem - Add mapistore notification IDL to normalize storage of session data - Add session management add,delete,exist,get operations over memcached - Add unit tests for mapistore notification session management layer
+  * [8f5d8e] Remove unused variable
+  * [3bf8e7] - Add EcDoAsyncConnectEx implementation
+  * [b6601c] Add libnanomsg dependency
+  * [725bee] Add documentation for mapistore:notification_cache option
+  * [e04c56] First iteration of the asynchronous emsmdb endpoint service.
+  * [b8e95c] Initialize variable to NULL for consistency purpose
+  * [3da127] Add doxygen note to remind caller its responsibility to free returned data
+  * [ca8ea4] Add local memory context to prevent leaks from unrelease ndr blob
+  * [fe2a62] Second iteration of the asynchronous emsmdb endpoint service.
+  * [c63b87] - Add call to resolver_add in asyncemsmdb endpoint - Add a helper tool to fire notifications quickly and leverage mapistore notification resolver API.
+  * [722095] Add custom bind and unbind hooks for asyncemsmdb Add bind_addr and mstore_ctx parameters to asyncemsmdb session context
+  * [e9a714] [asyncemsmdb] Fix missing OOM checks
+  * [05cf71] [mapiproxy] mapiproxy unbind function is not responsible for freeing dcesrv_connection_context, upper layers and destructor functions in dcerpc_server.c are.
+  * [89361e] [emsmdb][nspi]: print out server_id and context_id in unbind debug message
+  * [79020a] Third iteration of the asynchronous emsmdb endpoint service
+  * [e7a36d] [utils] Add libmapistore as a dependency to ocnotify to autogenerate mapistore notification header files before trying to compile ocnotify
+  * [af1457] [ocnotify] default timeout on send ops and flush command
+  * [be5e19] [oxcnotif] implement emsmdbp subscription object and destructor
+  * [34a284] [oxcnotif] implementation of the external notification model
+  * [4d20d0] [oxcnotif] Add default case to mapistore notification union
+  * [1bb937] [oxcnotif] release memory allocated by memcached_get
+  * [707415] [oxcnotif] Fix doxygen typo
+  * [51bc39] [oxcnotif] Add API and unit test to deliver notifications payload between endpoints
+  * [024e25] [oxcnotif] missing doxygen line
+  * [1377fb] Add asyncemsmdb endpoint server stub with sample tevent_add_timer async call
+  * [55713f] [libmapi] avoid redefining __STDC_FORMAT_MACROS
+  * [a8dab7] Drop old notification system no longer in use
+  * [fd57f4] Add MAPISTORE_ERR_CONN_REFUSED error code
+  * [b9d7b3] Add MAPISTORE_ERR_NOT_AVAILABLE error code
+  * [6bf31d] Fix typo
+  * [79441c] - Add initialization of mapistore notification subsystem - Add mapistore notification IDL to normalize storage of session data - Add session management add,delete,exist,get operations over memcached - Add unit tests for mapistore notification session management layer
+  * [adf578] Remove unused variable
+  * [566da1] - Add EcDoAsyncConnectEx implementation
+  * [aeb67b] Add libnanomsg dependency
+  * [c5edc2] Add documentation for mapistore:notification_cache option
+  * [a4f996] First iteration of the asynchronous emsmdb endpoint service.
+  * [df19c7] Initialize variable to NULL for consistency purpose
+  * [d4aa75] Add doxygen note to remind caller its responsibility to free returned data
+  * [7d19e6] Add local memory context to prevent leaks from unrelease ndr blob
+  * [ab874c] Second iteration of the asynchronous emsmdb endpoint service.
+  * [07f0fb] - Add call to resolver_add in asyncemsmdb endpoint - Add a helper tool to fire notifications quickly and leverage mapistore notification resolver API.
+  * [d92300] Add custom bind and unbind hooks for asyncemsmdb Add bind_addr and mstore_ctx parameters to asyncemsmdb session context
+  * [8deb0c] [asyncemsmdb] Fix missing OOM checks
+  * [f0c088] [mapiproxy] mapiproxy unbind function is not responsible for freeing dcesrv_connection_context, upper layers and destructor functions in dcerpc_server.c are.
+  * [b2d280] [emsmdb][nspi]: print out server_id and context_id in unbind debug message
+  * [bdfa2b] Third iteration of the asynchronous emsmdb endpoint service
+  * [a92d7e] [utils] Add libmapistore as a dependency to ocnotify to autogenerate mapistore notification header files before trying to compile ocnotify
+  * [9f9937] [ocnotify] default timeout on send ops and flush command
+  * [74179d] [oxcnotif] implement emsmdbp subscription object and destructor
+  * [ce8295] [oxcnotif] implementation of the external notification model
+  * [f6bcfb] [oxcnotif] Add default case to mapistore notification union
+  * [331067] [oxcnotif] release memory allocated by memcached_get
+  * [e79883] [oxcnotif] Fix doxygen typo
+  * [9e5609] [oxcnotif] Add API and unit test to deliver notifications payload between endpoints
+  * [32e517] [oxcnotif] missing doxygen line
+  * [2c95b7] Fourth iteration of asynchronous emsmdb endpoint service
+  * [a27d8f] [asyncemsmdb] Fix wrong return type
+  * [b27443] [oxcnotif] First iteration of the dovecot openchange email notification plugin
+  * [bb620d] [oxcnotif] dovecot plugin documentation and configuration option updates
+  * [2a3ef2] [oxcnotif] handle contentstable modified events in mapistore folders
+  * [67101e] [oxcnotif] fix PidTagFolderFlags memory allocation
+  * [b6c273] [oxcnotif] add function to generate SOGo URL from scratch
+  * [d49752] [oxcnotif] newmail notification is now processed every time
+  * [d8688b] [oxcnotif] Fix typo
+  * [f0bcf0] [emsmdb] fix wrong indentation
+  * [3f8bd0] [oxcnotif] fix debug level
+  * [6bf406] [oxcnotif] add checks on session version
+  * [585e4f] [oxcnotif] move check on space in memcached key into resolver_add_key function
+  * [49b317] [oxcnotif] Remove pedantic free
+  * [edf2aa] [emsmdb] remove deprecated parameter added to EcDoRpc_process_transaction
+  * [582710] [oxcfold] clean-up unused code
+  * [9636c0] [oxcfold] replace unused code and add direct type check
+  * [f2b6d5] [oxcnotif] remove unnecessary talloc_free
+  * [06a1ba] [oxcnotif] Add missing autotools files in dovecot plugin directory
+  * [8ec474] [oxcnotif] Fix documentation typo
+  * [6b178f] [oxcnotif] fix debuglevel in EcDoAsyncWaitEx
+  * [0867e0] [oxcnotif] replace explicit abort() with OC_PANIC() macros
+  * [f745c9] [oxcnotif] fix typo and use define instead of int value directly
+  * [7a1d1f] [oxcnotif] use talloc_zero_array instead of talloc_array + memset
+  * [784892] [oxcnotif] fix typo
+  * [823a6c] [oxcnotif] Fix debuglevel in unbind call
+  * [622471] [oxcnotif] replace talloc() with talloc_zero()
+  * [6a0903] [oxcnotif] replace talloc_array with talloc_zero_array calls
+  * [2bf96b] [oxcnotif] Document additional dovecot plugin requirements.
+  * [230419] [oxcnotif] add openchange to the list of plugins to enable over LDA
+  * [78c676] Upgrade libmemcached requirement to 1.0.18 to avoid memcached_exist linking problem with 1.0.8 on Ubuntu trusty
+  * [8785b3] [oxcnotif] Fix Outlook disconnection when asyncemsmdb is missing
+  * [7d2e14] [testsuite] set deliver_add payload before the test starts
+  * [9f54c0] [testsuite]: fix pointer signess warning
+  * [05722a] [oxcnotif] Add changelog entry about newmail notifications
+  * [2bc678] [ocsmanager] remove deprecated refs to mapistore mgmt api
+  * [20c4b5] [oxcnotif] make resolver cn case insensitive
+  * [37e957] Update version to 4.1.18
+  * [c85441] Add script to offload fmid indexing of a migrated mailbox
+  * [cd2c39] Add entry for the indexing offload script in CHANGES.md
+  * [da3ee1] Update openchange package version to 2.3
+  * [7c540b] Update Changelog for 2.3 release
+  * [3785fd] Update unreleased compare tag to match latest 2.3 commit.
+
+  [ Javier Amor García ]
+  * [cde0e2] emsabp: fixes emsabp_table_fetch_attrs
+  * [fa1ba9] emsabp: fixed search and lookup attributes to work on groups
+  * [a3d0b9] [nspi] Better ResolveName(W) search
+  * [4c14f2] Change provision for groups and new recipient attributes
+  * [e1d848] Refactored and cleaned-up openchange_newuser
+  * [8a36e7] Added openchange_group command
+  * [b0bd80] Added migration for 'directory' application
+  * [dd3553] [nspi] Do not raise invalid bookmark error in addresses container without purported search
+  * [3ff0da] Add openchange_group to openchangeserver.install
+  * [4e8731] Test suite use the `CK_VERBOSITY` environment variable
+
+  [ Jesús García Sáez ]
+  * [b721a1] mapitest: zentyal_1872 expects MAPI_E_SUCCESS
+  * [555a6b] openchange_user_cleanup: clean memcached
+  * [e14cd8] indexing: ignore memcached errors
+  * [f2acf7] indexing: check mysql error on delete
+  * [89519b] nprops: generation of mapistore_namedprops.py
+  * [ad024e] Named properties: migration initial data
+  * [5a1f25] Remove unnecessary mem_ctx in schema_migration
+  * [897538] Remove C code schema creation of named properties
+  * [e3bdea] Generate mapistore_namedprops.py when compiling libmapistore
+
+  [ Enrique J. Hernández Blasco ]
+  * [cc27a2] Fix EmptyFolder ROP
+  * [2cfe3f] Introduce mapistore_indexing_record_add_fmid_for_uri
+  * [60631f] [mapitest] Fix mapi object management in OXCFOLD-MOVEFOLDER
+  * [3ddeb7] Update indexing entries when deleting a folder
+  * [a4c11c] Delete mapistore first on mapistore root folders
+  * [f9cfb2] libmapi: Give support to not send any flag
+  * [ccd3a6] Added new mapitest to test DeleteFolder ROP flags
+  * [679029] Fix creation of root folders using CreateFolder ROP
+  * [a439d6] Add set_system_idx call to a OpenChangeDB folder
+  * [417daa] Fix on getting unsigned long long from a NULL string
+  * [d5e3dc] [oxcfxics] Fix debug messages at entering three procs
+  * [4878fe] Add paragraph to explain how to see which unit tests are run
+  * [63f213] Reuse a folder as special folder if one already exists on Logon
+  * [e92b1a] Set postmaster proxyAddresses entry as secondary
+  * [53706a] Use stderr on error messages on directory migration
+  * [9b9fbf] Refactor provision to use current_fid when it is set
+  * [1d15ee] [oxosfld] Implement parsing and marshalling for PersistData
+  * [4178aa] [libmapi] Cache Sync Issues, its subfolders and Junk in mapi client
+  * [0c1afa] [oxosfld] Function to check if a fid belongs to a special folder
+
+  [ José Antonio Calvo ]
+  * [f71265] add old sources repository in apport-retrace conf
+
+  [ Jelmer Vernooij ]
+  * [82073f] Remove dependency on testtools.
+  * [ad97bb] Fix version check.
+  * [e744a3] Drop kernel information from version header and mapitest.
+
+  [ Julio García ]
+  * [be23c7] Revert "Packaging for openchange notification daemon"
+  * [1e21ac] Adding new build dependency, libnanomsg-dev
+  * [313978] Revert "Notification service implementation based on RabbitMQ"
+  * [297099] Revert "Notification service implementation based on RabbitMQ"
+  * [9a0d67] Add to openchangeserver package the user_cleanup script
+  * [93c532] Set Breaks for openchangeserver that won't work with old sogo
+  * [05840b] Adding missing so to the packaging to make work the notifications
+  * [14d56e] Adding dependency to be able to run cleanup script without errors
+  * [906a37] Preparing for 2.4-zentyal1 release
+
+  [ Enrique J. Hernández ]
+  * [8e62d9] Remove no longer pymapi to disable
+
+  [ Juan Vallés ]
+  * [3de1a0] [oxocal] Fix TZRule flags
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Wed, 20 May 2015 15:48:46 +0200
+
 openchange (3:2.3-zentyal11) trusty; urgency=medium
 
   [ Jesús García Sáez ]
