@@ -132,6 +132,7 @@ Pre-Depends: ${misc:Pre-Depends}
 Depends: openchangeproxy,
          samba (>= 2:4.1.3),
          python-memcache,
+         curl,
          ${misc:Depends},
          ${python:Depends},
          ${shlibs:Depends}
