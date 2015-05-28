@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The descriptions should be useful and understandable for end users of OpenChange.
 Unreleased changes refer to our current [master branch](https://github.com/openchange/openchange/).
 
+## [Unreleased]
+
+### Fixes
+
+* Open a shared calendar from address list in Outlook 2013
+* Send event invitation mails to several attendees, mixing internal and external recipients
+
+
 ## [2.4-zentyal1] - 2015-05-20
 
 ### Added
