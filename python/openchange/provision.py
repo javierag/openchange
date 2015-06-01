@@ -533,21 +533,40 @@ def get_ldb_url(lp, creds, names):
     return url
 
 
-def get_user_dn(ldb, basedn, username):
+def _get_unique_element(ldb, basedn, ldb_filter):
+    res = ldb.search(base=basedn, scope=SCOPE_SUBTREE, expression=ldb_filter, attrs=["*"])
+    n_res = len(res)
+    if n_res == 1:
+        return res[0]
+    elif n_res > 1:
+        raise "More than one result for search %s with base %s" % (ldb_filter, basedn)
+    else:
+        return None
+
+
+def get_user(ldb, basedn, username):
     ldb_filter = "(&(objectClass=user)(sAMAccountName=%s))" % username
-    return _get_element_dn(ldb, basedn, ldb_filter)
+    return _get_unique_element(ldb, basedn, ldb_filter)
 
 
-def get_group_dn(ldb, domain_dn, org_name, groupname):
+def get_user_dn(ldb, basedn, username):
+    user = get_user(ldb, basedn, username)
+    if user:
+        return user.dn.get_linearized()
+    else:
+        return None
+
+
+def get_group(ldb, domain_dn, org_name, groupname):
     if org_name:
         basedn = "CN=Groups,CN=%s,CN=Users,%s" % (org_name, domain_dn)
         ldb_filter = "(&(objectClass=group)(sAMAccountName=%s@%s))" % (groupname, org_name)
         try:
-            group_dn = _get_element_dn(ldb, basedn, ldb_filter)
-            if group_dn:
-                return group_dn
+            group = _get_unique_element(ldb, basedn, ldb_filter)
+            if group:
+                return group
         except LdbError, ldb_error:
-            code, msg =ldb_error.args
+            code, msg = ldb_error.args
             # error 32. "no such base dn", is ignored to be able to fallback to zserver DN style
             if code != 32:
                 raise ldb_error
@@ -555,22 +574,15 @@ def get_group_dn(ldb, domain_dn, org_name, groupname):
     # fallback to Zentyal-server DN style
     basedn = "CN=Groups,%s" % (domain_dn)
     ldb_filter = "(&(objectClass=group)(sAMAccountName=%s))" % groupname
-    return _get_element_dn(ldb, basedn, ldb_filter)
+    return _get_unique_element(ldb, basedn, ldb_filter)
 
 
-def _get_element_dn(ldb, basedn, ldb_filter):
-    if not isinstance(ldb, Ldb):
-        raise TypeError("'ldb' argument must be an Ldb intance")
-
-    dn = None
-    res = ldb.search(base=basedn, scope=SCOPE_SUBTREE, expression=ldb_filter, attrs=["*"])
-    n_res = len(res)
-    if n_res == 1:
-        dn = res[0].dn.get_linearized()
-    elif n_res > 1:
-        raise "More than one result for search %s with base %s" % (ldb_filter, basedn)
-
-    return dn
+def get_group_dn(ldb, domain_dn, org_name, groupname):
+    group = get_group(ldb, domain_dn, org_name, groupname)
+    if group:
+        return group.dn.get_linearized()
+    else:
+        return None
 
 
 def get_schema_master(db):
@@ -630,10 +642,15 @@ def newuser(names, lp, creds, username=None, mail=None):
                  to <samAccountName>@<dnsdomain>
     """
     db = get_local_samdb(names, lp, creds)
-    user_dn = get_user_dn(db, "CN=Users,%s" % names.domaindn, username)
-    if user_dn:
-        smtp_user, mail_domain = _smtp_user_and_domain_by_dn(user_dn, username, mail, names)
-        extended_user = """
+    user = get_user(db, "CN=Users,%s" % names.domaindn, username)
+    if not user:
+        print "[!] User '%s' not found" % username
+        return
+
+    user_dn = user.dn.get_linearized()
+    cn = user['cn'][0]
+    smtp_user, mail_domain = _smtp_user_and_domain_by_dn(user_dn, username, mail, names)
+    extended_user = """
 dn: %(user_dn)s
 changetype: modify
 add: mailNickName
@@ -643,10 +660,10 @@ homeMDB: CN=Mailbox Store (%(netbiosname)s),CN=First Storage Group,CN=Informatio
 add: homeMTA
 homeMTA: CN=Mailbox Store (%(netbiosname)s),CN=First Storage Group,CN=InformationStore,CN=%(netbiosname)s,CN=Servers,CN=%(firstou)s,CN=Administrative Groups,CN=%(firstorg)s,CN=Microsoft Exchange,CN=Services,CN=Configuration,%(domaindn)s
 add: legacyExchangeDN
-legacyExchangeDN: /o=%(firstorg)s/ou=%(firstou)s/cn=Recipients/cn=%(username)s
+legacyExchangeDN: /o=%(firstorg)s/ou=%(firstou)s/cn=Recipients/cn=%(cn)s
 add: proxyAddresses
 proxyAddresses: SMTP:%(smtp_user)s
-proxyAddresses: =EX:/o=%(firstorg)s/ou=%(firstou)s/cn=Recipients/cn=%(username)s
+proxyAddresses: =EX:/o=%(firstorg)s/ou=%(firstou)s/cn=Recipients/cn=%(cn)s
 proxyAddresses: X400:c=US;a= ;p=%(firstorg_x400)s;o=%(firstou_x400)s;s=%(username)s
 proxyAddresses: smtp:postmaster@%(mail_domain)s
 replace: msExchUserAccountControl
@@ -656,41 +673,40 @@ msExchRecipientTypeDetails: 6
 add: msExchRecipientDisplayType
 msExchRecipientDisplayType: 0
 """
-        # According to [MS-OXCMAIL] Section 1.1, the primary
-        # proxyAddresses entry is the SMTP one and the secondaries
-        # proxyAddresses entries are the smtp ones
+    # According to [MS-OXCMAIL] Section 1.1, the primary
+    # proxyAddresses entry is the SMTP one and the secondaries
+    # proxyAddresses entries are the smtp ones
 
-        ldif_value = extended_user % {"user_dn": user_dn,
-                                      "username": username,
-                                      "netbiosname": names.netbiosname,
-                                      "firstorg": names.firstorg,
-                                      "firstorg_x400": names.firstorg[:16],
-                                      "firstou": names.firstou,
-                                      "firstou_x400": names.firstou[:64],
-                                      "domaindn": names.domaindn,
-                                      "dnsdomain": names.dnsdomain,
-                                      "smtp_user": smtp_user,
-                                      "mail_domain": mail_domain}
-        db.modify_ldif(ldif_value)
+    ldif_value = extended_user % {"user_dn": user_dn,
+                                  "cn": cn,
+                                  "username": username,
+                                  "netbiosname": names.netbiosname,
+                                  "firstorg": names.firstorg,
+                                  "firstorg_x400": names.firstorg[:16],
+                                  "firstou": names.firstou,
+                                  "firstou_x400": names.firstou[:64],
+                                  "domaindn": names.domaindn,
+                                  "dnsdomain": names.dnsdomain,
+                                  "smtp_user": smtp_user,
+                                  "mail_domain": mail_domain}
+    db.modify_ldif(ldif_value)
 
-        res = db.search(base=user_dn, scope=SCOPE_BASE, attrs=["*"])
-        if len(res) == 1:
-            record = res[0]
-        else:
-            raise Exception("this should never happen as we just modified the record...")
-        record_keys = map(lambda x: x.lower(), record.keys())
-
-        if "displayname" not in record_keys:
-            extended_user = "dn: %s\nadd: displayName\ndisplayName: %s\n" % (user_dn, username)
-            db.modify_ldif(extended_user)
-
-        if "mail" not in record_keys:
-            extended_user = "dn: %s\nadd: mail\nmail: %s\n" % (user_dn, smtp_user)
-            db.modify_ldif(extended_user)
-
-        print "[+] User %s extended and enabled" % username
+    res = db.search(base=user_dn, scope=SCOPE_BASE, attrs=["*"])
+    if len(res) == 1:
+        record = res[0]
     else:
-        print "[!] User '%s' not found" % username
+        raise Exception("this should never happen as we just modified the record...")
+
+    record_keys = map(lambda x: x.lower(), record.keys())
+    if "displayname" not in record_keys:
+        extended_user = "dn: %s\nadd: displayName\ndisplayName: %s\n" % (user_dn, username)
+        db.modify_ldif(extended_user)
+
+    if "mail" not in record_keys:
+        extended_user = "dn: %s\nadd: mail\nmail: %s\n" % (user_dn, smtp_user)
+        db.modify_ldif(extended_user)
+
+    print "[+] User %s extended and enabled" % username
 
 
 def accountcontrol(names, lp, creds, username, value=0):
@@ -729,21 +745,24 @@ def newgroup(names, lp, creds, groupname, mail=None,):
                  be set to <samAccountName>@<dnsdomain>
     """
     db = get_local_samdb(names, lp, creds)
-    group_dn = get_group_dn(db, names.domaindn, names.firstorg, groupname)
+    group = get_group(db, names.domaindn, names.firstorg, groupname)
+    if not group:
+        print "[!] Group '%s' not found" % groupname
 
-    if group_dn:
-        smtp_user, mail_domain = _smtp_user_and_domain_by_dn(group_dn, groupname, mail, names)
-        (recipient_type_details, recipient_display_type) = _group_recipient_type_details(db, group_dn)
-        extended_group = """
+    group_dn = group.dn.get_linearized()
+    cn = group['cn'][0]
+    smtp_user, mail_domain = _smtp_user_and_domain_by_dn(group_dn, groupname, mail, names)
+    (recipient_type_details, recipient_display_type) = _group_recipient_type_details(db, group_dn)
+    extended_group = """
 dn: %(group_dn)s
 changetype: modify
 add: mailNickName
 mailNickname: %(groupname)s
 add: legacyExchangeDN
-legacyExchangeDN: /o=%(firstorg)s/ou=%(firstou)s/cn=Recipients/cn=%(groupname)s
+legacyExchangeDN: /o=%(firstorg)s/ou=%(firstou)s/cn=Recipients/cn=%(cn)s
 add: proxyAddresses
 proxyAddresses: SMTP:%(smtp_user)s
-proxyAddresses: =EX:/o=%(firstorg)s/ou=%(firstou)s/cn=Recipients/cn=%(groupname)s
+proxyAddresses: =EX:/o=%(firstorg)s/ou=%(firstou)s/cn=Recipients/cn=%(cn)s
 proxyAddresses: smtp:postmaster@%(mail_domain)s
 proxyAddresses: X400:c=US;a= ;p=%(firstorg_x400)s;o=%(firstou_x400)s;s=%(groupname)s
 add: msExchRecipientTypeDetails
@@ -751,36 +770,36 @@ msExchRecipientTypeDetails: %(recipient_type_details)s
 add: msExchRecipientDisplayType
 msExchRecipientDisplayType: %(recipient_display_type)s
 """
-        ldif_value = extended_group % {"group_dn": group_dn,
-                                       "groupname": groupname,
-                                       "firstorg": names.firstorg,
-                                       "firstorg_x400": names.firstorg[:16],
-                                       "firstou": names.firstou,
-                                       "firstou_x400": names.firstou[:64],
-                                       "smtp_user": smtp_user,
-                                       "mail_domain": mail_domain,
-                                       "recipient_type_details": recipient_type_details,
-                                       "recipient_display_type": recipient_display_type}
-        db.modify_ldif(ldif_value)
+    ldif_value = extended_group % {"group_dn": group_dn,
+                                   "groupname": groupname,
+                                   "cn": cn,
+                                   "firstorg": names.firstorg,
+                                   "firstorg_x400": names.firstorg[:16],
+                                   "firstou": names.firstou,
+                                   "firstou_x400": names.firstou[:64],
+                                   "smtp_user": smtp_user,
+                                   "mail_domain": mail_domain,
+                                   "recipient_type_details": recipient_type_details,
+                                   "recipient_display_type": recipient_display_type}
+    db.modify_ldif(ldif_value)
 
-        res = db.search(base=group_dn, scope=SCOPE_BASE, attrs=["*"])
-        if len(res) == 1:
-            record = res[0]
-        else:
-            raise Exception("this should never happen as we just modified the record...")
-        record_keys = [x.lower() for x in record.keys()]
-
-        if "displayname" not in record_keys:
-            extended_group = "dn: %s\nadd: displayName\ndisplayName: %s\n" % (group_dn, groupname)
-            db.modify_ldif(extended_group)
-
-        if "mail" not in record_keys:
-            extended_group = "dn: %s\nadd: mail\nmail: %s\n" % (group_dn, smtp_user)
-            db.modify_ldif(extended_group)
-
-        print "[+] Group %s extended and enabled" % groupname
+    res = db.search(base=group_dn, scope=SCOPE_BASE, attrs=["*"])
+    if len(res) == 1:
+        record = res[0]
     else:
-        print "[!] Group '%s' not found" % groupname
+        raise Exception("this should never happen as we just modified the record...")
+
+    record_keys = [x.lower() for x in record.keys()]
+
+    if "displayname" not in record_keys:
+        extended_group = "dn: %s\nadd: displayName\ndisplayName: %s\n" % (group_dn, groupname)
+        db.modify_ldif(extended_group)
+
+    if "mail" not in record_keys:
+        extended_group = "dn: %s\nadd: mail\nmail: %s\n" % (group_dn, smtp_user)
+        db.modify_ldif(extended_group)
+
+    print "[+] Group %s extended and enabled" % groupname
 
 
 def delete_group(names, lp, creds, groupname):
