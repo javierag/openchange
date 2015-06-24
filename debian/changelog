@@ -1,3 +1,64 @@
+openchange (3:2.4-zentyal2) trusty; urgency=medium
+
+  [ Julien Kerihuel ]
+  * [bf22d1] Add AUTHORS file required during autogen.sh script execution
+  * [622a94] [oxcnotif] Fix setting of notification_cache in distributed scenario
+  * [2b64c4] Fix FastTransfer TransferStatus for hierarchy synchronizations
+  * [15a4fb] Fix hierarchy issue for every mapistore subfolders created before or during first synchronization.
+  * [46d99b] Explicit retval checks
+  * [d85aed] Add entry in CHANGES.md to highlight the hierarchy synchronization fix
+  * [c3f02e] More verbose comment on the Hierarchy change
+  * [e63608] Copy PidTagChangeKey and PidTagPredecessorChangeList for objects in the Outbox folder to be copied within Sent folder.
+  * [8b4866] Fix indentation
+  * [a1fb2f] OOF checks on emsmdbp_copy_properties{,_submit}
+  * [aaf5cb] Update retval type from int to enum MAPISTATUS
+  * [fb28c8] Add debug message to detect failures while copying object properties.
+
+  [ Juan Vallés ]
+  * [8d9836] Fix property pull from data blobs in parse_ModifyRecipientRow
+  * [58abea] [oxcnotif] Support SOGo URLs with the mail address as username
+  * [549988] oxcnotif: fix notification regression in zserver
+  * [46708a] oxcnotif: Implement openchange_mail_save in notification plugin
+
+  [ Enrique J. Hernández Blasco ]
+  * [49c36a] nspi: Remove server processing rules from emsabp_search
+  * [cd60ea] nspi: Uniform the NSPI UpdateStat op comments
+  * [18d47c] nspi: Include more server processing rules for QueryRows
+  * [99f2cd] indexing: ensure DB connection on allocating fid operation
+  * [fc5293] nspi: Include more server processing rules on SeekEntries
+  * [a1d446] nspi: Include more server processing rules on GetMatches
+  * [99574a] Update CHANGES to reflect user level fix
+  * [c7f4e9] mapitest: Success on NspiUpdateStat with SortTypePhoneticDisplayName
+  * [39be31] mapitest: Include new helper mapitest_print_assert
+  * [553de0] mapitest: Improve tests over oxcfxics downloading
+  * [0c0244] oxcfxics: Set sort in changed messages before and conditionally
+  * [e13501] oxcfxics: Optimise message changes discard already in cnset_seen
+  * [56dbd0] oxcfxics: Include a very useful debug message
+  * [24a49b] ocdb logger: Implement ReceiveFolderTable
+  * [1e9aa5] mapitest: Run all tests in <SUITE>-ALL when one is skipped
+  * [a5570d] mapitest: Give support to skip test when is flagged as NotInOpenChange
+  * [90c0bc] oxcfxics: Fill MetaTagCnsetSeenFAI property only with FAI messages
+  * [b82ebf] mapitest: Flag not implemented ROPs in OpenChange
+
+  [ Julio García ]
+  * [50531e] Adding missing dependency for upload crashes without error
+  * [3854b3] Prepare for the next release of 2.4-zentyal2
+
+  [ Javier Amor García ]
+  * [d9331f] Set postmaster proxyAddresses entry as secondary in groups
+  * [39bc7d] Migration: add new attributes only to users with account enabled
+  * [f13d9a] Skip duplicate schemas on provision
+
+  [ Jesús García Sáez ]
+  * [1f162b] provision: format changes
+  * [ed0acd]  provision: add --ignore-already-exists option
+  * [283d59] provision: use constant instead of magic number
+  * [e94c89] ocsmanager: allow HEAD oab.xml request
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Wed, 24 Jun 2015 10:11:58 +0200
+
 openchange (3:2.4-zentyal1) trusty; urgency=medium
 
   [ Julien Kerihuel ]
