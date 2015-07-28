@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The descriptions should be useful and understandable for end users of OpenChange.
 Unreleased changes refer to our current [master branch](https://github.com/openchange/openchange/).
 
+## [2.4-zentyal3] - 2015-07-28
+
+### Fixes
+
+* Several crash fixes
+
+
 ## [2.4-zentyal2] - 2015-06-24
 
 ### Fixes
