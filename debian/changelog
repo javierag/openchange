@@ -1,3 +1,48 @@
+openchange (3:2.4-zentyal3) trusty; urgency=medium
+
+  [ Javier Amor García ]
+  * [f25798] provision: Add option to remove user's openchange attributes
+  * [a7c71a] provision: Users and Group LDAP elements can be anywhere
+  * [377b1c] provision: Added enable all groups option for organizations
+  * [511cb4] provision: Fixed first directory migration
+  * [142ef9] provision: parameters changes in provision scripts
+  * [1c1017] provision: Added msExchOmaAdminWirelessEnable attribute to user
+
+  [ Enrique J. Hernández Blasco ]
+  * [b20b4e] retrace: Added asyncemsmdb component
+  * [311269] oxcfxics: Support REPLID-based IDSET parsing
+  * [fc902a] oxcfxics: Fix REPLID-based IDSET parsing with length smaller than 16B
+  * [68884e] oxcfxics: Include in IdsetDeleted only ids present in IdsetGiven
+  * [1eb395] oxcfxics: Unit test IDSET_includes_guid_glob
+  * [27c176] mapitest: Add ModifyRecipients call that now crashes
+  * [cf4157] oxcfxics: Always include valid mid in IdsetGiven
+  * [614199] libmapi: Set PR_ENTRYID proptag on AddUserPermission oxcperm request
+  * [0d9648] mapitest: Skip all tests failing in OpenChange
+  * [ead8b6] mapitest: OXCPERM-MODIFY-PERMISSIONS test is now independent from server
+  * [0f5e07] asyncemsmdb: Do not crash on stop
+  * [1f7f58] indexing: Do not setup deleted fmid in memcached
+
+  [ Jesús García Sáez ]
+  * [60350e] asyncemsmdb: release full session
+  * [d428a5] mapistore_release don't need to free members
+  * [c452de] asyncemsmdb_mapistore_destructor fix return values
+  * [291300] emsmdb: change memctx of private data
+  * [5fe4b0] emsmdb: release sessions
+  * [68e359] Workaround: Revert of release sessions
+
+  [ Julien Kerihuel ]
+  * [24285b] Add sanity check on buffer.length to prevent from checking range if size is 0 and save some cycles. This case occurs when initial input buffer is a GUID only with no elements (16 bytes).
+
+  [ Juan Vallés ]
+  * [e4aa06] oxcfxics: Fix deletion of IDs within an idset
+
+  [ Julio García ]
+  * [4cf5a0] Preparing for 2.4-zentyal3 release
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Tue, 28 Jul 2015 19:23:09 +0200
+
 openchange (3:2.4-zentyal2) trusty; urgency=medium
 
   [ Julien Kerihuel ]
