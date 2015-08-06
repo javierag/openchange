@@ -1,3 +1,54 @@
+openchange (3:2.4-zentyal4) trusty; urgency=medium
+
+  [ Julien Kerihuel ]
+  * [ede986] Fix XID structure and add custom print function
+  * [f78087] Print human readable FILETIME when decoding data at NDR layer
+  * [70bca8] Remove extra spaces
+  * [35f53f] - Add decoder for FastTransfer buffer at NDR layer - Add dump_data at NDR layer to support ndr_print indentation
+  * [9b51ac] Add exchange_debug interface for debugging purposes Add script to turn hex output from log output into binary blob
+  * [f514bb] Add ndr_dump_data prototype to avoid warning at compilation time
+  * [c115a3] Adjust IncrSyncEnd indentation
+  * [d3791f] - Fix fasttransfer buffer dump depth - Add IncrSyncStateBegin/IncrSyncStateEnd as a root state
+  * [978cbd] Add fallback NDR_REMAINING data blob when property type decoding is missing (PT_MV_*).
+  * [de1aea] use define and macros to set colors rather than direct ANSI codes
+  * [18ca33] Use CYAN instead of GREEN for MetaTag Enhance MetaTagIdsetGiven dump
+  * [083df4] Fix indentation
+  * [d2cae9] Use ndr_dump_data rather than ndr_print_DATA_BLOB to respect indentation
+  * [ca944c] Add function to dump specific properties with an advanced and enhanced (sometimes packed) view
+  * [8dc8e8] Disable ANSI colors by default and provide --enable-ansi-color option instead at configure time to enable them
+  * [e6b084] Move exchange_debug interface from exchange.idl to exchange_debug.idl and fix associated ndr server symbol lookup in OpenChange server
+  * [2ca9e6] Add support to decode remaining ICS states MetaTag: MetaTagCnsetSeenFAI, MetaTagIdsetGiven and MetaTagCnsetRead
+  * [1dabe3] Print human readable SyncUploadState steam
+  * [299855] ndr_dump_data function fixes:  - Fix offset used when printing ASCII buffer  - Fix space padding between ascii and hex segments when line%16
+  * [cf5400] Use ndr_dump_data instead of dump_data to print SBinary_short array
+  * [ecdd47] - Add support for MetaTag MetaTagIdsetDeleted
+
+  [ Enrique J. Hernández Blasco ]
+  * [5bd5fd] libmapi: Implement get_SizedXidArray helper function
+  * [64bc01] oxcfxics: Pass predecessor change list to backend on move_copy
+  * [ad4d8f] client: Send PidTagClientSubmitTime on sending mail
+  * [889cd5] client: Send filename as unicode
+  * [9026d1] client: Send only available bytes while sending an attachment
+  * [b03377] client: Update CHANGES.md
+  * [f33142] ndr_fasttransfer: Proper decoding for MetaTagIdsetDeleted
+
+  [ Killian De Volder ]
+  * [85b2b3] Fixed bugs regarding the cursor.execute(operation, params=None) API.
+
+  [ Juan Vallés ]
+  * [18a6ff] Check return in oxcfxics_push_messageChange
+
+  [ Jesús García Sáez ]
+  * [7e3077] oxcfxics: check memory allocation
+  * [c3c767] asyncemsmdb: do not double free mstore_ctx
+
+  [ José Antonio Calvo ]
+  * [17d9b1] Preparing for 2.4-zentyal4 release
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Thu, 06 Aug 2015 14:39:24 +0200
+
 openchange (3:2.4-zentyal3) trusty; urgency=medium
 
   [ Javier Amor García ]
