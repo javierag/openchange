@@ -1,3 +1,40 @@
+openchange (3:2.4-zentyal5) trusty; urgency=medium
+
+  [ Enrique J. Hernández Blasco ]
+  * [1952e7] testsuite: Adding tests to ensure MySQL update with same value works
+  * [0166a7] rpcproxy: Send Ping PDU to avoid timeout disconn in OUT channel
+  * [8728f6] ocdb: Return MAPI_E_NOT_FOUND only if fid is not in DB
+  * [afdb46] indexing: Return MAPISTORE_SUCCESS on updating FMID with the same URL
+  * [ba2e99] ocdb: Move get_fid above to avoid forward declaration
+  * [1aedbe] unittest: Implement missing ocdb-logger backend tests
+  * [35dcb9] unittest: Avoid compilation warning on ocdb-multitenancy tests
+  * [843455] ocdb-logger: Print out the change number returned value
+
+  [ Julien Kerihuel ]
+  * [b66214] Update README.md to notify developers of the requirement to patch packaging_impl.py from apport-retrace to retrace packages properly from any version when the crash comes from a Zentyal package.
+  * [ae8f5b] Add FX dump support for property PidTagAdditionalRenEntryIds
+  * [cd3a37] Tentative fix for CR-1136.
+  * [d67615] Fix typo
+
+  [ Juan Vallés ]
+  * [f55a3a] Set return values in emsmdbp_object_get_properties_mapistore_root
+
+  [ Jesús García Sáez ]
+  * [c2e71d] util-memcached: cache of connections
+  * [d4de18] util-memcached: shared or not shared connections
+  * [37c421] util-memcached: removed log messages
+  * [9e6c19] ocsmanager-oof: log exceptions
+  * [9fd9a0] ocsmanager-oof: fix unicode issues
+  * [dde007] Update changelog
+  * [c420cf] Update CHANGES.md for 2.4-zentyal5
+
+  [ Javier Amor García ]
+  * [739a6f] emsmdb: Initialize attachmentID in attachment objects
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Wed, 26 Aug 2015 10:57:22 +0200
+
 openchange (3:2.4-zentyal4) trusty; urgency=medium
 
   [ Julien Kerihuel ]
