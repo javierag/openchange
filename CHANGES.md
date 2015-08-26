@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The descriptions should be useful and understandable for end users of OpenChange.
 Unreleased changes refer to our current [master branch](https://github.com/openchange/openchange/).
 
+## [2.4-zentyal5] - 2015-08-26
+
+### Fixes
+
+* Avoid disconnections between rpcproxy and openchange
+* Openchangedb fix mysql_affected_rows()
+* Use only one connection for all memcached
+* Out of office message supports non-ascii characters
+
 ## [2.4-zentyal4] - 2015-08-06
 
 ### Fixes
@@ -23,7 +32,6 @@ Unreleased changes refer to our current [master branch](https://github.com/openc
 
 ### Fixes
 
-* Out of office message supports non-ascii characters
 * Support notifications when the username is a mail address (e.g. Zentyal Cloud)
 * Open a shared calendar from address list in Outlook 2013
 * Send event invitation mails to several attendees, mixing internal and external recipients
@@ -77,8 +85,11 @@ Unreleased changes refer to our current [master branch](https://github.com/openc
 * Fixed performance issue affecting initial synchronization of business size mailbox contents
 
 [//]: # (unreleased compare link should be changed to the latest release)
-[//]: # (the current hash was master when this CHANGES.md file was created)
-[unreleased]: https://github.com/Zentyal/openchange/compare/2.4-zentyal1...HEAD
+[unreleased]: https://github.com/Zentyal/openchange/compare/2.4-zentyal5...HEAD
+[2.4-zentyal5]: https://github.com/Zentyal/openchange/compare/2.4-zentyal4...2.4-zentyal5
+[2.4-zentyal4]: https://github.com/Zentyal/openchange/compare/2.4-zentyal3...2.4-zentyal4
+[2.4-zentyal3]: https://github.com/Zentyal/openchange/compare/2.4-zentyal2...2.4-zentyal3
+[2.4-zentyal2]: https://github.com/Zentyal/openchange/compare/2.4-zentyal1...2.4-zentyal2
 [2.4-zentyal1]: https://github.com/Zentyal/openchange/compare/2.3-zentyal11...2.4-zentyal1
 [2.3-zentyal11]: https://github.com/Zentyal/openchange/compare/2.3-zentyal10...2.3-zentyal11
 [2.3-zentyal10]: https://github.com/Zentyal/openchange/compare/2.3-zentyal9...2.3-zentyal10
