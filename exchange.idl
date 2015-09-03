@@ -333,7 +333,7 @@ System Attendant Private Interface
 		[case(PT_I2)]			uint16			i;
 		[case(PT_LONG)]			uint32			l;
 		[case(PT_BOOLEAN)]		uint8			b;
-		[case(PT_STRING8)][unique][string,charset(DOS)] uint8	*lpszA;
+		[case(PT_STRING8)][unique][string] uint8	*lpszA;
 		[case(PT_UNICODE)][string,charset(UTF16)] uint16	*lpszW;
 		[case(PT_BINARY)]		Binary_r       		bin;
 		[case(PT_SVREID)]		Binary_r		bin;
@@ -476,7 +476,7 @@ System Attendant Private Interface
 		[case(PT_DOUBLE)]		double			dbl;
 		[case(PT_BOOLEAN)]		uint8			b;
 		[case(PT_I8)]			dlong			d;
-		[case(PT_STRING8)][unique][string,charset(DOS)] uint8	*lpszA;
+		[case(PT_STRING8)][unique][string] uint8		*lpszA;
 		[case(PT_BINARY)]		Binary_r       		bin;
 		[case(PT_SVREID)]		Binary_r		bin;
 		[case(PT_UNICODE)][string,charset(UTF16)] uint16	*lpszW;
