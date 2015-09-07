@@ -777,7 +777,7 @@ System Attendant Private Interface
 
 	MAPISTATUS EcDoConnect(
  		[out]				policy_handle	*handle,
-                [in,string,charset(DOS)]	uint8		szUserDN[],
+		[in,string]			uint8		szUserDN[],
 		[in]				uint32		ulFlags,
 		[in]				uint32		ulConMod,
 		[in]				uint32		cbLimit,
@@ -790,11 +790,11 @@ System Attendant Private Interface
 		[out]				uint32		*pcRetry,
 		[out]				uint32		*pcmsRetryDelay,
 		[out]				uint32		*picxr,
-                [out,ref,string,charset(DOS)]uint8		**szDNPrefix,
-                [out,ref,string,charset(DOS)]uint8		**szDisplayName,
-                [out]				uint16          rgwServerVersion[3],
-		[in,out]       			uint16          rgwClientVersion[3],
-                [in,out]			uint32		*pullTimeStamp
+		[out,ref,string]		uint8		**szDNPrefix,
+		[out,ref,string]		uint8		**szDisplayName,
+		[out]				uint16		rgwServerVersion[3],
+		[in,out]			uint16		rgwClientVersion[3],
+		[in,out]			uint32		*pullTimeStamp
 		);
 
 	/*****************/
@@ -4638,7 +4638,7 @@ System Attendant Private Interface
 
 	[public,nopull,nopush,noprint] MAPISTATUS EcDoConnectEx(
 		[out]				policy_handle				*handle,
-		[in,string,charset(DOS)]	uint8					szUserDN[],
+		[in,string]	uint8					szUserDN[],
 		[in]				uint32					ulFlags,
 		[in]				uint32					ulConMod,
 		[in]				uint32					cbLimit,
@@ -4651,8 +4651,8 @@ System Attendant Private Interface
 		[out]				uint32					*pcRetry,
 		[out]				uint32					*pcmsRetryDelay,
 		[out]				uint32					*picxr,
-		[out,ref,string,charset(DOS)]uint8					**szDNPrefix,
-		[out,ref,string,charset(DOS)]uint8					**szDisplayName,
+		[out,ref,string]		uint8					**szDNPrefix,
+		[out,ref,string]		uint8					**szDisplayName,
 		[in]				uint16					rgwClientVersion[3],
 		[out]				uint16					rgwServerVersion[3],
 		[out]				uint16					rgwBestVersion[3],
@@ -4720,4 +4720,3 @@ System Attendant Private Interface
 {
 	void unknown_dummy();
 }
-
