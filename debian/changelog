@@ -1,3 +1,29 @@
+openchange (3:2.4-zentyal6) trusty; urgency=medium
+
+  [ Enrique J. Hernández Blasco ]
+  * [3a9e9b] Show output of oc migration
+  * [e3a2f8] rpcproxy: Manage client disconnections waiting for CONN/B1 RTS packet
+  * [28b477] libmapi: IDSET_dump dumps to log level 5
+  * [6b5c51] rpcproxy: Check properly how to wait for IN channel from Outbound proxy
+  * [27a875] oxcfxics: Only return state of involved objects on Upload changes
+  * [e4f6b3] oxcfxics: Return CnsetSeen and CnsetRead on ImportReadStateChanges
+  * [b55ba8] oxcfxics: Include useful debug messages on upload imports
+  * [bc6827] fxdecoder: Decode named properties
+  * [b88561] fxbuffer: Parse PidTagFreeBusyEntryIds for hierarchy changes
+
+  [ Carlos Pérez-Aradros Herce ]
+  * [05f05a] mapiproxy: deprecate mpm_session_increment_ref_count
+  * [95e306] mapiproxy: Move emsmdb and nspi session handling to mpm_session
+  * [96f2d5] mapiproxy: Release all users sessions when closing last one
+  * [7d53ab] asyncemsmdb: Adapt to mpm_session framework
+
+  [ Jesús García Sáez ]
+  * [bc2192] Update CHANGES.md for 2.4-zentyal6
+
+  [ Jenkins Zentyal (Zentyal GPG) ]
+
+ -- Jenkins Zentyal (Zentyal GPG) <jenkins@zentyal.com>  Mon, 07 Sep 2015 20:08:43 +0200
+
 openchange (3:2.4-zentyal5) trusty; urgency=medium
 
   [ Enrique J. Hernández Blasco ]
