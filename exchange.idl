@@ -56,9 +56,9 @@ cpp_quote("#include <gen_ndr/ndr_misc.h>")
 	/* Function 0x00 */
 	MAPISTATUS RfrGetNewDSA(
 		[in]                                    uint32  ulFlags,
-		[in,string,charset(DOS)]                uint8   *pUserDN,
-		[in,out,unique,string,charset(DOS)]     uint8   **ppszUnused,
-		[in,out,unique,string,charset(DOS)]     uint8   **ppszServer
+		[in,string]                             uint8   *pUserDN,
+		[in,out,unique,string]                  uint8   **ppszUnused,
+		[in,out,unique,string]                  uint8   **ppszServer
 		);
 
 	/*****************/
@@ -66,8 +66,8 @@ cpp_quote("#include <gen_ndr/ndr_misc.h>")
 	MAPISTATUS RfrGetFQDNFromLegacyDN(
 		[in]							uint32	ulFlags,
 		[in,range(10,1024)]					uint32	cbMailboxServerDN,
-		[in,string,charset(DOS),size_is(cbMailboxServerDN)]	uint8	*szMailboxServerDN,
-		[out,ref,string,charset(DOS)]				uint8	**ppszServerFQDN
+		[in,string,size_is(cbMailboxServerDN)]			uint8	*szMailboxServerDN,
+		[out,ref,string]					uint8	**ppszServerFQDN
 		);
 }
 
