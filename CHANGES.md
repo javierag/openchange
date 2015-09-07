@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The descriptions should be useful and understandable for end users of OpenChange.
 Unreleased changes refer to our current [master branch](https://github.com/openchange/openchange/).
 
+## [2.4-zentyal6] - 2015-09-07
+
+### Fixes
+
+* Openchange sessions are handled much better
+* Rpcproxy handles client disconnections better
+* Avoid race condition uploading changes which made new objects be missed
+
 ## [2.4-zentyal5] - 2015-08-26
 
 ### Fixes
@@ -86,6 +94,7 @@ Unreleased changes refer to our current [master branch](https://github.com/openc
 
 [//]: # (unreleased compare link should be changed to the latest release)
 [unreleased]: https://github.com/Zentyal/openchange/compare/2.4-zentyal5...HEAD
+[2.4-zentyal6]: https://github.com/Zentyal/openchange/compare/2.4-zentyal5...2.4-zentyal6
 [2.4-zentyal5]: https://github.com/Zentyal/openchange/compare/2.4-zentyal4...2.4-zentyal5
 [2.4-zentyal4]: https://github.com/Zentyal/openchange/compare/2.4-zentyal3...2.4-zentyal4
 [2.4-zentyal3]: https://github.com/Zentyal/openchange/compare/2.4-zentyal2...2.4-zentyal3
