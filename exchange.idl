@@ -677,7 +677,7 @@ System Attendant Private Interface
 		[in] policy_handle			*handle,
 		[in] TI_dwFlags				dwFlags,
 		[in] uint32				ulType,
-		[in,unique,string,charset(DOS)] uint8	*pDN,
+		[in,unique,string] uint8		*pDN,
 		[in] uint32				dwCodePage,
 		[in] uint32				dwLocaleID,
 		[out] PropertyRow_r			**ppData
